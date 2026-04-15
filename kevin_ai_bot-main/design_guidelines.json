@@ -1,0 +1,126 @@
+{
+  "theme": "dark",
+  "archetype": "Archetype 5 (Jewel & Luxury / Premium SaaS) integrated with Emergent UI design",
+  "mood": "Cinematic, moody, elite, high-contrast, technical sophistication",
+  "colors": {
+    "background": {
+      "default": "#050505",
+      "surface": "#0A0A0A",
+      "surface_hover": "#141414",
+      "overlay": "rgba(0, 0, 0, 0.8)"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#A1A1AA",
+      "muted": "#52525B",
+      "inverse": "#050505"
+    },
+    "border": {
+      "default": "rgba(255, 255, 255, 0.08)",
+      "focus": "rgba(255, 255, 255, 0.25)",
+      "active": "rgba(255, 255, 255, 0.15)"
+    },
+    "brand": {
+      "primary": "#FFFFFF",
+      "primary_hover": "#F4F4F5",
+      "accent": "#E4E4E7",
+      "accent_glow": "rgba(255, 255, 255, 0.1)"
+    },
+    "status": {
+      "success": "#22C55E",
+      "success_bg": "rgba(34, 197, 94, 0.1)",
+      "warning": "#EAB308",
+      "warning_bg": "rgba(234, 179, 8, 0.1)",
+      "error": "#EF4444",
+      "error_bg": "rgba(239, 68, 68, 0.1)"
+    }
+  },
+  "typography": {
+    "font_families": {
+      "heading": "Outfit, sans-serif",
+      "body": "Manrope, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scales": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-light tracking-tighter",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-light tracking-tight",
+      "h3": "text-xl sm:text-2xl font-medium tracking-tight",
+      "body": "text-base font-normal leading-relaxed",
+      "small": "text-sm font-medium tracking-wide",
+      "overline": "text-xs font-bold uppercase tracking-[0.2em]"
+    }
+  },
+  "spacing_and_layout": {
+    "container_padding": "px-6 md:px-12 lg:px-24",
+    "section_gap": "py-24 md:py-32",
+    "card_padding": "p-8",
+    "grid_gap": "gap-6 md:gap-8",
+    "border_radius": {
+      "button": "rounded-full",
+      "card": "rounded-2xl",
+      "input": "rounded-xl",
+      "badge": "rounded-full"
+    },
+    "bento_grid": {
+      "base": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4",
+      "gap": "gap-4 md:gap-6",
+      "item_classes": "bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 flex flex-col"
+    }
+  },
+  "surfaces": {
+    "navbar": "fixed top-0 w-full z-50 bg-[#050505]/60 backdrop-blur-xl border-b border-white/5 saturate-150",
+    "sidebar": "h-full w-64 bg-[#050505] border-r border-white/5 flex flex-col",
+    "card_default": "bg-[#0A0A0A] border border-white/5 rounded-2xl shadow-sm transition-all duration-300",
+    "card_hover": "hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_8px_32px_rgba(255,255,255,0.04)]",
+    "modal_overlay": "bg-black/80 backdrop-blur-md z-50",
+    "modal_content": "bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-2xl"
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-white text-black font-medium tracking-wide hover:bg-gray-200 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.1)]",
+      "secondary": "bg-transparent border border-white/15 text-white hover:bg-white/5 transition-colors",
+      "ghost": "bg-transparent text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+    },
+    "inputs": {
+      "text": "bg-[#0A0A0A] border border-white/10 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/30 transition-all placeholder:text-gray-600",
+      "file_dropzone": "border-2 border-dashed border-white/10 rounded-2xl p-12 flex flex-col items-center justify-center hover:border-white/30 hover:bg-white/5 transition-all cursor-pointer group"
+    },
+    "chat_ui": {
+      "container": "flex flex-col h-full bg-[#050505]",
+      "message_user": "bg-[#141414] text-white rounded-2xl rounded-tr-sm px-6 py-4 max-w-[80%] self-end border border-white/5",
+      "message_ai": "bg-transparent text-gray-200 px-6 py-4 max-w-[85%] self-start flex gap-4 items-start",
+      "ai_avatar": "w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0 font-bold",
+      "input_container": "bg-[#050505] border-t border-white/5 p-4 md:p-6",
+      "input_box": "bg-[#0A0A0A] border border-white/10 rounded-full flex items-center px-2 py-2 focus-within:border-white/30 focus-within:ring-1 focus-within:ring-white/30 transition-all"
+    }
+  },
+  "motion": {
+    "hover": "transition-all duration-300 cubic-bezier(0.4, 0, 0.2, 1)",
+    "page_enter": "animate-in fade-in slide-in-from-bottom-4 duration-700",
+    "stagger_children": "delay-[calc(100ms*var(--index))]"
+  },
+  "media": {
+    "logos": {
+      "google": "https://images.unsplash.com/photo-1706879350832-db2615866e54?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1NzZ8MHwxfHNlYXJjaHwxfHxnb29nbGUlMjBsb2dvJTIwd2hpdGV8ZW58MHx8fHwxNzc0ODgwMTcwfDA&ixlib=rb-4.1.0&q=85",
+      "placeholder_company_1": "https://images.unsplash.com/photo-1770012977129-19f856a1f935?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDN8MHwxfHNlYXJjaHwzfHx0ZWNoJTIwY29tcGFueSUyMGxvZ28lMjBtaW5pbWFsaXN0fGVufDB8fHx8MTc3NDg4MDE1Nnww&ixlib=rb-4.1.0&q=85"
+    },
+    "backgrounds": {
+      "hero_abstract": "https://images.pexels.com/photos/3612930/pexels-photo-3612930.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "feature_glow": "https://images.unsplash.com/photo-1761078739233-629de9252840?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDB8MHwxfHNlYXJjaHwxfHxkYXJrJTIwdGVjaCUyMGFic3RyYWN0JTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NzQ4ODAxNjl8MA&ixlib=rb-4.1.0&q=85"
+    },
+    "lifestyle": {
+      "student_working": "https://images.pexels.com/photos/7711126/pexels-photo-7711126.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Strictly adhere to the BLACK THEME UI. Avoid using any other dominant color backgrounds. Stick to #050505 and #0A0A0A.",
+    "Do not use generic 'Inter' for headings. Use 'Outfit' for headings and 'Manrope' for body text. Load them via Google Fonts.",
+    "For icons, install and use 'lucide-react'. They match the minimal aesthetic.",
+    "For charts in the Report Page, use 'recharts' library. Customize chart colors to use white/gray/transparent combinations rather than default multi-colors.",
+    "Ensure all interactive elements (buttons, inputs, specific cards) have a 'data-testid' attribute using kebab-case role-based names.",
+    "On the landing page, implement a hero section with a subtle gradient overlay or grain texture over the hero background image to preserve text readability.",
+    "In the AI Interview Chat UI, use the specified component classes to create a ChatGPT-style layout that feels cinematic and focused.",
+    "Use pure HTML and Tailwind for layout structures, leaning on grid and flexbox. Avoid Shadcn components for macro layouts, use them only for complex logic (Modals, Select, etc.) if needed.",
+    "Implement the 'Emergent UI' feel by using 1px white/10 borders on deep black backgrounds, combined with extremely subtle hover states."
+  ]
+}
