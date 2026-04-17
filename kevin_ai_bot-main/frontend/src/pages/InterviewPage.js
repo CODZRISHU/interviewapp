@@ -95,11 +95,12 @@ export default function InterviewPage() {
 
   useEffect(() => {
     fetchInterview();
+    const mediaRecorder = mediaRecorderRef.current;
     return () => {
       window.speechSynthesis?.cancel();
       recognitionRef.current?.abort?.();
-      if (mediaRecorderRef.current?.stream) {
-        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+      if (mediaRecorder?.stream) {
+        mediaRecorder.stream.getTracks().forEach((track) => track.stop());
       }
     };
   }, [interviewId]); // eslint-disable-line
