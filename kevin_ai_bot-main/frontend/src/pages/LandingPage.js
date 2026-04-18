@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ArrowRight, Mic, FileText, BarChart3, Sparkles } from 'lucide-react';
+import { appConfig, isBetaExperience } from '../config/appConfig';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -40,14 +41,18 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto text-center relative z-10">
           <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-8">
             <Sparkles className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-xs font-medium text-gray-400 tracking-wide uppercase">AI-Powered Mock Interviews</span>
+            <span className="text-xs font-medium text-gray-400 tracking-wide uppercase">
+              {isBetaExperience ? `${appConfig.betaLabel} · AI-Powered Mock Interviews` : 'AI-Powered Mock Interviews'}
+            </span>
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-light tracking-tighter leading-[1.1] mb-6" style={{ fontFamily: 'Outfit' }}>
             Practice interviews with<br />
             <span className="font-medium">Kevin, your AI interviewer</span>
           </h1>
           <p className="text-base md:text-lg text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Upload your resume, talk through real projects, get natural follow-up questions, and review honest reports that help you improve.
+            {isBetaExperience
+              ? 'This Kevin beta runs on an isolated v2 stack. Upload your resume, test newer interview flows, and share feedback without affecting production users.'
+              : 'Upload your resume, talk through real projects, get natural follow-up questions, and review honest reports that help you improve.'}
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button

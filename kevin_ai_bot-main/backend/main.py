@@ -50,7 +50,13 @@ app.add_exception_handler(Exception, unhandled_exception_handler)
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "service": settings.app_name}
+    return {
+        "status": "ok",
+        "service": settings.app_name,
+        "app_env": settings.app_env,
+        "app_version": settings.app_version,
+        "beta_invite_only": settings.beta_invite_only,
+    }
 
 
 app.include_router(auth_router, prefix=settings.api_prefix)

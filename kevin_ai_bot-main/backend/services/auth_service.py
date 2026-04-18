@@ -23,6 +23,18 @@ def _as_utc_datetime(value):
     return value.astimezone(timezone.utc)
 
 
+def _ensure_beta_access(email: str) -> None:
+    normalized_email = (email or "").strip().lower()
+    if not settings.beta_invite_only:
+        return
+    if normalized_email in settings.beta_allowed_emails:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Kevin v2 beta is currently invite-only. Please use an invited email address.",
+    )
+
+
 def serialize_user(document: dict) -> UserResponse:
     billing = normalize_user_billing_document(document)
     entitlements = build_entitlements(document)
@@ -113,6 +125,7 @@ def _new_user_document(name: str, email: str, password, auth_provider: str) -> d
 
 
 async def register_user(payload: RegisterRequest) -> AuthResponse:
+    _ensure_beta_access(payload.email)
     existing = await database.users.find_one({"email": payload.email.lower()})
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account already exists for this email.")
@@ -123,6 +136,7 @@ async def register_user(payload: RegisterRequest) -> AuthResponse:
 
 
 async def login_user(payload: LoginRequest) -> AuthResponse:
+    _ensure_beta_access(payload.email)
     user_document = await database.users.find_one({"email": payload.email.lower()})
     if not user_document or not user_document.get("password"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
@@ -165,6 +179,7 @@ async def authenticate_google(id_token_value: str) -> AuthResponse:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google token.") from exc
 
     email = token_info["email"].lower()
+    _ensure_beta_access(email)
     user_document = await database.users.find_one({"email": email})
     if not user_document:
         user_document = _new_user_document(token_info.get("name") or email.split("@")[0], email, None, "google")

@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, Lock, Mail, User } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
+import { appConfig, isBetaExperience } from "../config/appConfig";
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -11,7 +12,14 @@ export default function AuthPage() {
   const [mode, setMode] = useState("login");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [googleState, setGoogleState] = useState({ loading: true, enabled: false, clientId: "" });
+  const [googleState, setGoogleState] = useState({
+    loading: true,
+    enabled: false,
+    clientId: "",
+    appEnv: appConfig.appEnv,
+    appVersion: appConfig.appVersion,
+    betaInviteOnly: appConfig.betaInviteOnly,
+  });
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const googleButtonRef = useRef(null);
   const googleInitializedRef = useRef(false);
@@ -33,6 +41,9 @@ export default function AuthPage() {
           loading: false,
           enabled: Boolean(response.data.google_enabled),
           clientId: response.data.google_client_id || "",
+          appEnv: response.data.app_env || appConfig.appEnv,
+          appVersion: response.data.app_version || appConfig.appVersion,
+          betaInviteOnly: Boolean(response.data.beta_invite_only),
         });
       } catch {
         if (!mounted) return;
@@ -40,6 +51,9 @@ export default function AuthPage() {
           loading: false,
           enabled: Boolean(fallbackGoogleClientId),
           clientId: fallbackGoogleClientId,
+          appEnv: appConfig.appEnv,
+          appVersion: appConfig.appVersion,
+          betaInviteOnly: appConfig.betaInviteOnly,
         });
       }
     };
@@ -132,10 +146,12 @@ export default function AuthPage() {
           <section>
             <p className="mb-4 text-xs uppercase tracking-[0.3em] text-gray-500">Kevin AI</p>
             <h1 className="mb-4 text-4xl font-light tracking-tight md:text-5xl" style={{ fontFamily: "Outfit" }}>
-              Own your interview prep stack.
+              {isBetaExperience ? `Explore Kevin ${googleState.appVersion?.toUpperCase?.() || "V2"} safely.` : "Own your interview prep stack."}
             </h1>
             <p className="max-w-xl text-base leading-7 text-gray-400">
-              Secure sign-in, resume-aware interviews, and honest feedback designed to help you improve with Kevin AI.
+              {googleState.betaInviteOnly
+                ? "This beta environment is invite-only and runs separately from the current production launch. Sign in with an approved email to test Kevin v2."
+                : "Secure sign-in, resume-aware interviews, and honest feedback designed to help you improve with Kevin AI."}
             </p>
           </section>
 
@@ -206,6 +222,11 @@ export default function AuthPage() {
               </label>
 
               {error ? <p className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</p> : null}
+              {googleState.betaInviteOnly ? (
+                <p className="rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+                  Kevin beta only allows invited email addresses. If your access is missing, ask the team managing the beta cohort.
+                </p>
+              ) : null}
 
               <button
                 type="submit"

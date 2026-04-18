@@ -55,6 +55,10 @@ async def auth_config():
     return {
         "google_enabled": bool(settings.google_client_id),
         "google_client_id": settings.google_client_id or "",
+        "app_env": settings.app_env,
+        "app_version": settings.app_version,
+        "beta_invite_only": settings.beta_invite_only,
+        "beta_allowed_email_count": len(settings.beta_allowed_emails),
     }
 
 

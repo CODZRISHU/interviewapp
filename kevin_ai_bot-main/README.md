@@ -77,6 +77,8 @@ Recommended:
 - `STT_PROVIDER=browser`
 - `SUPPORT_EMAIL=support@yourdomain.com`
 
+For a fully isolated private beta, use [backend/.env.beta.example](C:\Users\shiva\Downloads\kevin_ai_bot-main\kevin_ai_bot-main\backend\.env.beta.example) instead.
+
 ### Frontend
 
 Copy [frontend/.env.example](C:\Users\shiva\Downloads\kevin_ai_bot-main\kevin_ai_bot-main\frontend\.env.example) to `frontend/.env`.
@@ -85,6 +87,8 @@ Copy [frontend/.env.example](C:\Users\shiva\Downloads\kevin_ai_bot-main\kevin_ai
 REACT_APP_API_BASE_URL=https://api.yourdomain.com/api
 REACT_APP_GOOGLE_CLIENT_ID=your-google-client-id
 ```
+
+For Kevin v2 private beta, use [frontend/.env.beta.example](C:\Users\shiva\Downloads\kevin_ai_bot-main\kevin_ai_bot-main\frontend\.env.beta.example).
 
 ## Deploy to Production
 
@@ -105,6 +109,8 @@ In Atlas:
 ### 2. Backend on Render
 
 This repo includes [render.yaml](C:\Users\shiva\Downloads\kevin_ai_bot-main\kevin_ai_bot-main\render.yaml), so you can deploy the backend with Render Blueprint or create the service manually.
+
+For a separate v2 backend service, use [render.beta.yaml](C:\Users\shiva\Downloads\kevin_ai_bot-main\kevin_ai_bot-main\render.beta.yaml) and branch `release/v2-beta`.
 
 Manual Render settings:
 
@@ -232,3 +238,4 @@ Reports:
 - The app currently uses browser-based speech recognition for the simplest SaaS-friendly setup.
 - Frontend billing/subscription UI was removed from the active app flow.
 - There is still some old backend billing code in the repo, but it is not required for deploying the current no-subscription version.
+- A v2 private beta launch runbook is available at [docs/v2-launch.md](C:\Users\shiva\Downloads\kevin_ai_bot-main\kevin_ai_bot-main\docs\v2-launch.md).

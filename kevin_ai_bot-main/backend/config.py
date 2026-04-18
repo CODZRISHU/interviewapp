@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
     environment: str = "development"
     debug: bool = False
+    app_env: str = Field(default="production", alias="APP_ENV")
+    app_version: str = Field(default="v1", alias="APP_VERSION")
+    beta_invite_only: bool = Field(default=False, alias="BETA_INVITE_ONLY")
+    beta_allowed_emails: List[str] = Field(default_factory=list, alias="BETA_ALLOWED_EMAILS")
     mongo_url: str = Field(..., alias="MONGO_URL")
     db_name: str = Field("kevin_ai", alias="DB_NAME")
     jwt_secret_key: str = Field(..., alias="JWT_SECRET_KEY")
@@ -65,6 +69,10 @@ class Settings(BaseSettings):
                 raise ValueError("JWT_REFRESH_SECRET_KEY must be a strong production secret.")
             if not self.mongo_url.startswith("mongodb"):
                 raise ValueError("MONGO_URL must be configured for production.")
+
+        self.app_env = self.app_env.lower()
+        self.app_version = self.app_version.lower()
+        self.beta_allowed_emails = sorted({email.strip().lower() for email in self.beta_allowed_emails if email.strip()})
 
         return self
 
