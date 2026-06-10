@@ -23,6 +23,7 @@ config/
     frontend.prod.example
 
 docs/
+  DEVOPS_CICD.md
   ENVIRONMENT_AND_RELEASE_FLOW.md
 
 frontend/
@@ -110,6 +111,8 @@ REACT_APP_GOOGLE_CLIENT_ID=your-google-client-id
 ```
 
 ## Deploy to Production
+
+See [docs/DEVOPS_CICD.md](C:\Users\shiva\Downloads\kevin_ai_bot-main\kevin_ai_bot-main\docs\DEVOPS_CICD.md) for the free CI/CD flow, branch protection rules, Docker local parity, and rollback process.
 
 ### 1. MongoDB Atlas
 

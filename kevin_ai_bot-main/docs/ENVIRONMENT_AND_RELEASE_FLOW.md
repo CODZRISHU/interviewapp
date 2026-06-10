@@ -46,15 +46,22 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ## Promotion Rules
 
-1. Work only on `dev` for feature implementation.
-2. Push `dev` and open a pull request into `dev` if the work was done on a feature branch.
-3. After approval, cherry-pick or merge the approved commit into `test`.
-4. Run smoke tests in `test`.
-5. Push `test` and open a pull request into `test` if the work was staged on a release branch.
-6. After QA approval, cherry-pick or merge the validated commit into `prod`.
-7. Deploy production only from `prod`.
+1. Start every task from the latest `dev` branch.
+2. Create a feature branch from `dev` for every single code or documentation change.
+3. Make the change only on that feature branch.
+4. Validate the change locally.
+5. Push the feature branch and open a pull request back into `dev`.
+6. After approval, merge the feature branch into `dev`.
+7. Promote approved `dev` changes into `test` through a PR or cherry-pick.
+8. Run smoke tests in `test`.
+9. After QA approval, promote the validated change into `prod`.
+10. Deploy production only from `prod`.
+
+Do not commit directly to `dev`, `test`, or `prod` unless explicitly instructed for an emergency fix.
 
 ## Required Checks Before Promotion
+
+GitHub Actions runs these checks automatically on pull requests into `dev`, `test`, and `prod`.
 
 Backend:
 
@@ -79,6 +86,8 @@ Smoke test:
 - Interview start works
 - Next question works
 - Report generation works
+
+See `docs/DEVOPS_CICD.md` for the complete CI/CD, deployment, Docker, and rollback setup.
 
 ## Environment Ownership
 

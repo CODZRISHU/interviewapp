@@ -1,0 +1,30 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: kevin-ai-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - kevin_ai_mongo_data:/data/db
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: kevin-ai-backend
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      FRONTEND_APP_URL: http://localhost:3000
+      PUBLIC_APP_URL: http://localhost:3000
+      CORS_ORIGINS: '["http://localhost:3000"]'
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo
+
+volumes:
+  kevin_ai_mongo_data:
