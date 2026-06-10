@@ -13,6 +13,18 @@ Kevin AI is a resume-aware mock interview platform with a React frontend and a F
 ## Project Structure
 
 ```text
+config/
+  environments/
+    backend.dev.example
+    backend.test.example
+    backend.prod.example
+    frontend.dev.example
+    frontend.test.example
+    frontend.prod.example
+
+docs/
+  ENVIRONMENT_AND_RELEASE_FLOW.md
+
 frontend/
   src/
     components/
@@ -29,10 +41,19 @@ backend/
   utils/
   main.py
 
+scripts/
+  use-env.ps1
+
 render.yaml
 ```
 
 ## Local Development
+
+Activate the local development environment first:
+
+```powershell
+.\scripts\use-env.ps1 dev
+```
 
 ### Backend
 
@@ -54,9 +75,11 @@ corepack yarn start
 
 ## Environment Variables
 
+Kevin AI has tracked templates for `dev`, `test`, and `prod` in `config/environments`.
+
 ### Backend
 
-Copy [backend/.env.example](C:\Users\shiva\Downloads\kevin_ai_bot-main\kevin_ai_bot-main\backend\.env.example) to `backend/.env`.
+Use `scripts/use-env.ps1` for local env activation, or copy the matching backend template from `config/environments` into `backend/.env`.
 
 Required production values:
 
@@ -79,7 +102,7 @@ Recommended:
 
 ### Frontend
 
-Copy [frontend/.env.example](C:\Users\shiva\Downloads\kevin_ai_bot-main\kevin_ai_bot-main\frontend\.env.example) to `frontend/.env`.
+Use `scripts/use-env.ps1` for local env activation, or copy the matching frontend template from `config/environments` into `frontend/.env`.
 
 ```env
 REACT_APP_API_BASE_URL=https://api.yourdomain.com/api

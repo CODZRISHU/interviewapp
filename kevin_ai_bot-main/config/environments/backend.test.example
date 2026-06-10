@@ -1,0 +1,16 @@
+ENVIRONMENT=test
+DEBUG=false
+MONGO_URL=mongodb://localhost:27017
+DB_NAME=kevin_ai_test
+JWT_SECRET_KEY=local-test-jwt-secret-change-me
+JWT_REFRESH_SECRET_KEY=local-test-refresh-secret-change-me
+FRONTEND_APP_URL=http://localhost:3000
+PUBLIC_APP_URL=http://localhost:3000
+CORS_ORIGINS=["http://localhost:3000"]
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash-lite
+GOOGLE_CLIENT_ID=
+STT_PROVIDER=browser
+SUPPORT_EMAIL=support@kevinai.app

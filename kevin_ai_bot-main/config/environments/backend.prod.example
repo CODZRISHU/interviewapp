@@ -1,0 +1,16 @@
+ENVIRONMENT=production
+DEBUG=false
+MONGO_URL=mongodb+srv://<user>:<password>@cluster.mongodb.net/
+DB_NAME=kevin_ai
+JWT_SECRET_KEY=replace-with-a-long-random-secret
+JWT_REFRESH_SECRET_KEY=replace-with-a-second-long-random-secret
+FRONTEND_APP_URL=https://app.yourdomain.com
+PUBLIC_APP_URL=https://app.yourdomain.com
+CORS_ORIGINS=["https://app.yourdomain.com"]
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash-lite
+GOOGLE_CLIENT_ID=
+STT_PROVIDER=browser
+SUPPORT_EMAIL=support@kevinai.app
