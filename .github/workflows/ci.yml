@@ -79,7 +79,7 @@ jobs:
         run: corepack enable
 
       - name: Install frontend dependencies
-        run: corepack yarn install --frozen-lockfile
+        run: corepack yarn install
 
       - name: Run frontend tests
         run: corepack yarn test --watchAll=false --runInBand --passWithNoTests
