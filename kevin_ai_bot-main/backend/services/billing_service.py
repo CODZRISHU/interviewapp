@@ -598,6 +598,8 @@ async def consume_credit_for_interview(user_id: str, interview_id: str, duration
         await database.interviews.update_one({"id": interview_id}, {"$set": {"creditDeducted": True, "deductedBucket": bucket_key, "deductedAt": now}})
         await database.credit_ledger.insert_one(
             {
+                "ledgerId": f"ldg_{now.strftime('%Y%m%d%H%M%S%f')}",
+                "id": f"ldg_{now.strftime('%Y%m%d%H%M%S%f')}",
                 "userId": user_id,
                 "interviewId": interview_id,
                 "event": "credit_consumed",
