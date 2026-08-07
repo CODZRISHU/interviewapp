@@ -5,7 +5,10 @@ import { Play, Upload, FileText, BarChart3, Clock, ChevronRight, UserCircle2 } f
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { api } from '../services/api';
 
+const maxVal = (val, fallback) => (val && val > 0 ? val : fallback);
+
 export default function Dashboard() {
+
   const { user, checkAuth } = useAuth();
   const navigate = useNavigate();
   const [reports, setReports] = useState([]);
@@ -76,46 +79,127 @@ export default function Dashboard() {
         <p className="text-gray-500 text-sm">Upload your resume, practice interviews, and review your reports.</p>
       </div>
 
-      <div className="mb-8 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-4">
-        <div className="rounded-[28px] border border-white/8 bg-[#0A0A0A] p-6">
-          <p className="text-xs uppercase tracking-[0.24em] text-gray-500 mb-3">Practice Hub</p>
-          <h2 className="text-2xl font-medium mb-3" style={{ fontFamily: 'Outfit' }}>
-            Focus on your next interview, not plans or credits
-          </h2>
-          <p className="text-sm text-gray-400 leading-6">
-            Kevin is now fully open for practice. Start an interview whenever you want, upload a better resume anytime,
-            and use the reports to improve depth, clarity, and confidence.
-          </p>
-          <div className="grid grid-cols-3 gap-4 mt-6 text-sm">
-            <div>
-              <p className="text-gray-500 text-xs">Interviews Taken</p>
-              <p>{user?.usageCount || 0}</p>
+        {/* Subscription Alert Banners */}
+        {user?.billingStatus === "expired" && (
+          <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-sm font-medium">Your subscription has expired. Please recharge to continue interviews.</span>
             </div>
-            <div>
-              <p className="text-gray-500 text-xs">Resume</p>
-              <p>{user?.resumeFilename ? 'Uploaded' : 'Needed'}</p>
+            <button
+              onClick={() => navigate('/subscription')}
+              className="px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition"
+            >
+              Recharge Now
+            </button>
+          </div>
+        )}
+
+        {/* Subscription Overview Widget */}
+        <div className="mb-8 p-6 rounded-[28px] border border-white/10 bg-[#0A0A0A] flex flex-col md:flex-row justify-between gap-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-xs uppercase tracking-[0.24em] text-gray-500">Current Subscription</span>
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase ${
+                user?.planKey === "premium_199" ? "bg-amber-500/20 text-amber-300" :
+                user?.planKey === "basic_99" ? "bg-blue-500/20 text-blue-300" : "bg-gray-500/20 text-gray-300"
+              }`}>
+                {user?.planKey === "premium_199" ? "Premium Plan (₹199)" :
+                 user?.planKey === "basic_99" ? "Basic Plan (₹99)" : "Free Plan"}
+              </span>
             </div>
-            <div>
-              <p className="text-gray-500 text-xs">Reports</p>
-              <p>{reports.length}</p>
+
+            <h2 className="text-xl font-semibold mb-4" style={{ fontFamily: 'Outfit' }}>
+              Interview Credit Buckets
+            </h2>
+
+            {/* Credit Buckets Breakdown */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5">
+                <div className="flex justify-between text-xs text-gray-400 mb-1.5">
+                  <span>10 Min Bucket</span>
+                  <span className="font-semibold text-white">
+                    {user?.creditBuckets?.["10m"]?.remaining ?? (user?.creditsRemaining || 0)} Remaining
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 transition-all duration-500"
+                    style={{
+                      width: `${Math.min(
+                        ((user?.creditBuckets?.["10m"]?.remaining ?? 1) /
+                          maxVal(user?.creditBuckets?.["10m"]?.total, 1)) *
+                          100,
+                        100
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5">
+                <div className="flex justify-between text-xs text-gray-400 mb-1.5">
+                  <span>15 Min Bucket</span>
+                  <span className="font-semibold text-white">
+                    {user?.creditBuckets?.["15m"]?.remaining ?? 0} Remaining
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full bg-purple-500 transition-all duration-500"
+                    style={{
+                      width: `${Math.min(
+                        ((user?.creditBuckets?.["15m"]?.remaining ?? 0) /
+                          maxVal(user?.creditBuckets?.["15m"]?.total, 1)) *
+                          100,
+                        100
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5">
+                <div className="flex justify-between text-xs text-gray-400 mb-1.5">
+                  <span>30 Min Bucket</span>
+                  <span className="font-semibold text-white">
+                    {user?.creditBuckets?.["30m"]?.remaining ?? 0} Remaining
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full bg-amber-500 transition-all duration-500"
+                    style={{
+                      width: `${Math.min(
+                        ((user?.creditBuckets?.["30m"]?.remaining ?? 0) /
+                          maxVal(user?.creditBuckets?.["30m"]?.total, 1)) *
+                          100,
+                        100
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
             </div>
+          </div>
+
+          {/* Quick Action CTAs */}
+          <div className="flex flex-col justify-center gap-3 shrink-0">
+            <button
+              onClick={() => navigate('/subscription')}
+              className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm transition shadow-lg shadow-blue-600/20 text-center"
+            >
+              {user?.planKey === "free_trial" ? "Upgrade Now" : "Manage Subscription"}
+            </button>
+            <button
+              onClick={() => navigate('/payments')}
+              className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-medium text-xs border border-white/5 transition text-center"
+            >
+              Payment History
+            </button>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => navigate('/profile')}
-          className="rounded-[28px] border border-white/8 bg-white/[0.04] p-6 text-left transition hover:bg-white/[0.06]"
-        >
-          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-4">
-            <UserCircle2 className="w-5 h-5 text-white" />
-          </div>
-          <h2 className="text-lg font-medium mb-2" style={{ fontFamily: 'Outfit' }}>Your Profile</h2>
-          <p className="text-sm text-gray-400 leading-6">
-            Check your account details, current resume, and sign out from here.
-          </p>
-        </button>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
         <button

@@ -22,8 +22,7 @@ def _as_utc_datetime(value):
     return value.astimezone(timezone.utc)
 
 
-async def ensure_plan_access(user: dict) -> None:
-    return None
+from services.billing_service import consume_credit_for_interview, ensure_interview_access
 
 
 async def start_interview_for_user(user: dict, config: dict) -> dict:
@@ -31,10 +30,13 @@ async def start_interview_for_user(user: dict, config: dict) -> dict:
     if not user.get("resumeText"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Upload a resume before starting an interview.")
 
+    duration_mins = config.get("duration", 15)
+    await ensure_interview_access(user, duration_mins)
+
     structured_resume = current_user.get("structuredResume") or {"skills": [], "projects": [], "experience": [], "education": [], "tools": []}
     question_plan = generate_question_plan(config, structured_resume)
     now = utc_now()
-    expires_at = now + timedelta(minutes=config.get("duration", 15))
+    expires_at = now + timedelta(minutes=duration_mins)
     state = {
         "current_question": 1,
         "total_questions": question_plan["total_questions"],
@@ -69,6 +71,7 @@ async def start_interview_for_user(user: dict, config: dict) -> dict:
         "startedAt": now,
         "expiresAt": expires_at,
         "endedAt": None,
+        "creditDeducted": False,
     }
     await database.interviews.insert_one(document)
     await database.users.update_one({"id": user["id"]}, {"$set": {"usageCount": current_user.get("usageCount", 0) + 1}})
@@ -177,6 +180,18 @@ async def finish_interview(user: dict, interview_id: str) -> dict:
     meaningful_count = sum(1 for item in messages if item["role"] == "user" and len(item["content"].strip()) >= 10)
     now = utc_now()
 
+    # Calculate exact interview duration for 2-minute rule
+    started_at = _as_utc_datetime(interview.get("startedAt")) or now
+    elapsed_seconds = max((now - started_at).total_seconds(), 0)
+
+    # 2-Minute Rule Credit Deduction
+    credit_res = await consume_credit_for_interview(
+        user_id=user["id"],
+        interview_id=interview_id,
+        duration_minutes=interview.get("config", {}).get("duration", 15),
+        elapsed_seconds=elapsed_seconds,
+    )
+
     if meaningful_count < 2:
         report_payload = {
             "id": f"rpt_{now.strftime('%Y%m%d%H%M%S%f')}",
@@ -219,6 +234,8 @@ async def finish_interview(user: dict, interview_id: str) -> dict:
 
     await database.reports.insert_one(report_payload)
     await database.interviews.update_one({"id": interview_id}, {"$set": {"status": "completed", "endedAt": now}})
-    await database.analytics_events.insert_one({"userId": user["id"], "event": "interview_completed", "properties": {"interviewId": interview_id, "status": report_payload["status"]}, "createdAt": now})
+    await database.analytics_events.insert_one({"userId": user["id"], "event": "interview_completed", "properties": {"interviewId": interview_id, "status": report_payload["status"], "creditDeduction": credit_res}, "createdAt": now})
     report_payload.pop("_id", None)
+    report_payload["creditDeduction"] = credit_res
     return report_payload
+

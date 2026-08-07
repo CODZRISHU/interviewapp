@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, BarChart3, User, LogOut } from 'lucide-react';
+import { LayoutDashboard, BarChart3, User, LogOut, CreditCard, Receipt } from 'lucide-react';
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
@@ -14,9 +14,12 @@ export default function Sidebar() {
 
   const links = [
     { to: '/dashboard', icon: <LayoutDashboard className="w-4 h-4" />, label: 'Dashboard' },
+    { to: '/subscription', icon: <CreditCard className="w-4 h-4" />, label: 'Subscription' },
+    { to: '/payments', icon: <Receipt className="w-4 h-4" />, label: 'Payments' },
     { to: '/reports', icon: <BarChart3 className="w-4 h-4" />, label: 'Reports' },
     { to: '/profile', icon: <User className="w-4 h-4" />, label: 'Profile' },
   ];
+
 
   return (
     <aside className="h-full w-64 bg-[#050505] border-r border-white/5 flex flex-col shrink-0" data-testid="sidebar">

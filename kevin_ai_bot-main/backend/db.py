@@ -27,6 +27,18 @@ async def ensure_indexes() -> None:
     await database.refresh_tokens.create_index("expiresAt", expireAfterSeconds=0)
     await database.billing_events.create_index("eventId", unique=True)
     await database.analytics_events.create_index([("userId", 1), ("createdAt", -1)])
+    await database.payments.create_index("id", unique=True)
+    await database.payments.create_index("orderId", unique=True, sparse=True)
+    await database.payments.create_index("paymentId", unique=True, sparse=True)
+    await database.payments.create_index([("userId", 1), ("createdAt", -1)])
+    await database.payments.create_index("invoiceNumber", unique=True, sparse=True)
+    await database.invoices.create_index("invoiceNumber", unique=True)
+    await database.invoices.create_index([("userId", 1), ("createdAt", -1)])
+    await database.credit_ledger.create_index([("userId", 1), ("createdAt", -1)])
+    await database.audit_logs.create_index([("userId", 1), ("createdAt", -1)])
+    await database.subscriptions.create_index("id", unique=True)
+    await database.subscriptions.create_index([("userId", 1), ("status", 1)])
+
 
 
 def close_db() -> None:

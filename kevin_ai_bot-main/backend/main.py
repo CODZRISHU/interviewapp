@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -11,9 +12,10 @@ from db import close_db, ensure_indexes
 from middleware.rate_limit import RateLimitMiddleware
 from middleware.request_logging import RequestLoggingMiddleware
 from routes.auth import router as auth_router
-from routes.billing import router as billing_router
+from routes.billing import admin_router, router as billing_router
 from routes.interviews import router as interviews_router
 from routes.reports import router as reports_router
+from services.scheduler_service import start_background_scheduler
 from utils.error_handlers import http_exception_handler, unhandled_exception_handler, validation_exception_handler
 from fastapi import HTTPException
 
@@ -28,7 +30,9 @@ logging.basicConfig(
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await ensure_indexes()
+    scheduler_task = asyncio.create_task(start_background_scheduler())
     yield
+    scheduler_task.cancel()
     close_db()
 
 
@@ -55,5 +59,7 @@ async def health() -> dict:
 
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(billing_router, prefix=settings.api_prefix)
+app.include_router(admin_router, prefix=settings.api_prefix)
 app.include_router(interviews_router, prefix=settings.api_prefix)
 app.include_router(reports_router, prefix=settings.api_prefix)
+

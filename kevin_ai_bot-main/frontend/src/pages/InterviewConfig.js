@@ -40,6 +40,9 @@ export default function InterviewConfig() {
   const [starting, setStarting] = useState(false);
   const [customRole, setCustomRole] = useState('');
 
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeErrorMsg, setUpgradeErrorMsg] = useState('');
+
   const handleStart = async () => {
     if (!user?.resumeText) {
       alert('Please upload your resume first from the dashboard.');
@@ -54,10 +57,16 @@ export default function InterviewConfig() {
         state: { config, initialState: res.data.state }
       });
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to start interview');
+      if (err.response?.status === 403 || err.response?.status === 409) {
+        setUpgradeErrorMsg(err.response?.data?.detail || 'Upgrade required to start this interview.');
+        setShowUpgradeModal(true);
+      } else {
+        alert(err.response?.data?.detail || 'Failed to start interview');
+      }
       setStarting(false);
     }
   };
+
 
   const totalQ = Math.max(4, Math.floor(config.duration / 2));
 
@@ -195,6 +204,33 @@ export default function InterviewConfig() {
           </button>
         </div>
       </div>
+
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl max-w-md w-full p-6 text-center shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto mb-4">
+              <Clock className="w-6 h-6" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">Upgrade Required</h3>
+            <p className="text-gray-400 text-sm mb-6">{upgradeErrorMsg}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 font-semibold text-xs text-white transition"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => navigate('/subscription')}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold text-xs text-white transition shadow-lg shadow-blue-600/20"
+              >
+                View Plans & Upgrade
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

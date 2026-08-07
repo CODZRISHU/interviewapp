@@ -14,6 +14,10 @@ import ProfilePage from "./pages/ProfilePage";
 
 import InterviewConfig from "./pages/InterviewConfig";
 
+import SubscriptionPage from "./pages/SubscriptionPage";
+import PaymentHistoryPage from "./pages/PaymentHistoryPage";
+import AdminPaymentsPage from "./pages/AdminPaymentsPage";
+
 function AppRouter() {
   return (
     <Routes>
@@ -27,6 +31,9 @@ function AppRouter() {
       } />
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/subscription" element={<SubscriptionPage />} />
+        <Route path="/payments" element={<PaymentHistoryPage />} />
+        <Route path="/admin/payments" element={<AdminPaymentsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/reports/:reportId" element={<ReportDetail />} />
         <Route path="/profile" element={<ProfilePage />} />
@@ -34,6 +41,7 @@ function AppRouter() {
     </Routes>
   );
 }
+
 
 function App() {
   return (

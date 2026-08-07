@@ -17,13 +17,14 @@ class UserResponse(BaseModel):
     id: str
     name: str
     email: EmailStr
-    plan: Literal["free", "launch", "starter", "pro", "addon"] = "free"
+    plan: str = "free"
     planKey: str = "free_trial"
     billingStatus: Literal["trial_available", "trial_used", "active", "past_due", "cancelled", "expired"] = "trial_available"
     usageCount: int = 0
     totalCredits: int = 1
     creditsUsed: int = 0
     creditsRemaining: int = 1
+    creditBuckets: Dict[str, Dict[str, int]] = Field(default_factory=dict)
     trialUsed: bool = False
     bonusCreditsBalance: int = 0
     subscriptionEnd: Optional[datetime] = None
@@ -117,7 +118,14 @@ class ResumeResponse(BaseModel):
 
 
 class CheckoutRequest(BaseModel):
-    itemKey: Literal["launch_offer", "starter_monthly", "pro_monthly", "topup_5", "topup_10"]
+    itemKey: str
+
+
+class VerifyPaymentRequest(BaseModel):
+    razorpay_order_id: str = Field(min_length=4)
+    razorpay_payment_id: str = Field(min_length=4)
+    razorpay_signature: str = Field(min_length=4)
+    plan_key: str
 
 
 class BillingPortalResponse(BaseModel):
@@ -135,6 +143,7 @@ class PlanSummary(BaseModel):
     credits: int
     maxDurationMinutes: int
     planGroup: str
+    bucketBreakdown: Optional[Dict[str, int]] = None
     tag: Optional[str] = None
     highlighted: bool = False
     isLimited: bool = False
@@ -165,3 +174,26 @@ class BillingSnapshotResponse(BaseModel):
     addons: List[PlanSummary]
     meta: Dict[str, Any]
     razorpayKeyId: str = ""
+
+
+class PaymentRecord(BaseModel):
+    id: str
+    orderId: str
+    paymentId: str
+    userId: str
+    userEmail: Optional[str] = None
+    userName: Optional[str] = None
+    planKey: str
+    planName: str
+    amount: float
+    gstAmount: float
+    totalAmount: float
+    currency: str = "INR"
+    status: str
+    paymentMethod: str = "razorpay"
+    invoiceNumber: str
+    transactionRef: str
+    subscriptionStart: Optional[datetime] = None
+    subscriptionEnd: Optional[datetime] = None
+    createdAt: datetime
+
