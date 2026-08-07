@@ -9,35 +9,44 @@ database: AsyncIOMotorDatabase = client[settings.db_name]
 
 
 async def ensure_indexes() -> None:
-    await database.users.create_index("email", unique=True)
-    await database.users.create_index("id", unique=True)
-    await database.users.create_index([("planKey", 1), ("billingStatus", 1)])
-    await database.users.create_index([("creditsRemaining", -1), ("creditsUsed", -1)])
-    await database.users.create_index("providerCustomerId", sparse=True)
-    await database.users.create_index("providerSubscriptionId", sparse=True)
-    await database.users.create_index("providerPaymentLinkId", sparse=True)
-    await database.interviews.create_index("id", unique=True)
-    await database.interviews.create_index([("userId", 1), ("createdAt", -1)])
-    await database.interviews.create_index([("userId", 1), ("status", 1), ("createdAt", -1)])
-    await database.reports.create_index("id", unique=True)
-    await database.reports.create_index([("userId", 1), ("createdAt", -1)])
-    await database.reports.create_index([("interviewId", 1), ("createdAt", -1)])
-    await database.refresh_tokens.create_index("tokenId", unique=True)
-    await database.refresh_tokens.create_index("userId")
-    await database.refresh_tokens.create_index("expiresAt", expireAfterSeconds=0)
-    await database.billing_events.create_index("eventId", unique=True)
-    await database.analytics_events.create_index([("userId", 1), ("createdAt", -1)])
-    await database.payments.create_index("id", unique=True)
-    await database.payments.create_index("orderId", unique=True, sparse=True)
-    await database.payments.create_index("paymentId", unique=True, sparse=True)
-    await database.payments.create_index([("userId", 1), ("createdAt", -1)])
-    await database.payments.create_index("invoiceNumber", unique=True, sparse=True)
-    await database.invoices.create_index("invoiceNumber", unique=True)
-    await database.invoices.create_index([("userId", 1), ("createdAt", -1)])
-    await database.credit_ledger.create_index([("userId", 1), ("createdAt", -1)])
-    await database.audit_logs.create_index([("userId", 1), ("createdAt", -1)])
-    await database.subscriptions.create_index("id", unique=True)
-    await database.subscriptions.create_index([("userId", 1), ("status", 1)])
+    indexes = [
+        (database.users, "email", {"unique": True}),
+        (database.users, "id", {"unique": True}),
+        (database.users, [("planKey", 1), ("billingStatus", 1)], {}),
+        (database.users, [("creditsRemaining", -1), ("creditsUsed", -1)], {}),
+        (database.users, "providerCustomerId", {"sparse": True}),
+        (database.users, "providerSubscriptionId", {"sparse": True}),
+        (database.users, "providerPaymentLinkId", {"sparse": True}),
+        (database.interviews, "id", {"unique": True}),
+        (database.interviews, [("userId", 1), ("createdAt", -1)], {}),
+        (database.interviews, [("userId", 1), ("status", 1), ("createdAt", -1)], {}),
+        (database.reports, "id", {"unique": True}),
+        (database.reports, [("userId", 1), ("createdAt", -1)], {}),
+        (database.reports, [("interviewId", 1), ("createdAt", -1)], {}),
+        (database.refresh_tokens, "tokenId", {"unique": True}),
+        (database.refresh_tokens, "userId", {}),
+        (database.refresh_tokens, "expiresAt", {"expireAfterSeconds": 0}),
+        (database.billing_events, "eventId", {"unique": True}),
+        (database.analytics_events, [("userId", 1), ("createdAt", -1)], {}),
+        (database.payments, "id", {"unique": True}),
+        (database.payments, "orderId", {"unique": True, "sparse": True}),
+        (database.payments, "paymentId", {"unique": True, "sparse": True}),
+        (database.payments, [("userId", 1), ("createdAt", -1)], {}),
+        (database.payments, "invoiceNumber", {"unique": True, "sparse": True}),
+        (database.invoices, "invoiceNumber", {"unique": True}),
+        (database.invoices, [("userId", 1), ("createdAt", -1)], {}),
+        (database.credit_ledger, [("userId", 1), ("createdAt", -1)], {}),
+        (database.audit_logs, [("userId", 1), ("createdAt", -1)], {}),
+        (database.subscriptions, "id", {"unique": True}),
+        (database.subscriptions, [("userId", 1), ("status", 1)], {}),
+    ]
+
+    for col, keys, opts in indexes:
+        try:
+            await col.create_index(keys, **opts)
+        except Exception:
+            pass
+
 
 
 
