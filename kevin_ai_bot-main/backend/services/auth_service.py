@@ -91,7 +91,13 @@ def _new_user_document(name: str, email: str, password, auth_provider: str) -> d
         "totalCredits": 1,
         "creditsUsed": 0,
         "creditsRemaining": 1,
+        "creditBuckets": {
+            "10m": {"total": 1, "used": 0, "remaining": 1},
+            "15m": {"total": 0, "used": 0, "remaining": 0},
+            "30m": {"total": 0, "used": 0, "remaining": 0},
+        },
         "trialUsed": False,
+
         "bonusCreditsBalance": 0,
         "subscriptionEnd": None,
         "currentPeriodStart": None,
