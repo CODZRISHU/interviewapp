@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Mic, MicOff, Square, ArrowLeft, Loader2, Volume2, VolumeX, ChevronDown, ChevronUp, Send, Code, Users, Briefcase, BookOpen } from 'lucide-react';
+import { Mic, MicOff, Square, ArrowLeft, Loader2, Volume2, VolumeX, ChevronDown, ChevronUp, Send, Code, Users, Briefcase, BookOpen, Sparkles } from 'lucide-react';
 import { api } from '../services/api';
 
 const SECTION_META = {
-  skills: { label: 'Skills', icon: <Code className="w-3 h-3" />, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-  projects: { label: 'Projects', icon: <Briefcase className="w-3 h-3" />, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
-  experience: { label: 'Experience', icon: <Users className="w-3 h-3" />, color: 'text-amber-400', bg: 'bg-amber-400/10' },
-  fundamentals: { label: 'Fundamentals', icon: <BookOpen className="w-3 h-3" />, color: 'text-purple-400', bg: 'bg-purple-400/10' },
-  introduction: { label: 'Introduction', icon: null, color: 'text-gray-400', bg: 'bg-gray-400/10' },
+  skills: { label: 'Skills', icon: <Code className="w-3 h-3" />, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
+  projects: { label: 'Projects', icon: <Briefcase className="w-3 h-3" />, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+  experience: { label: 'Experience', icon: <Users className="w-3 h-3" />, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
+  fundamentals: { label: 'Fundamentals', icon: <BookOpen className="w-3 h-3" />, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+  introduction: { label: 'Introduction', icon: <Sparkles className="w-3 h-3" />, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
 };
 
 const SECTION_GLOW = {
-  introduction: 'from-white/20 via-white/5 to-transparent',
-  projects: 'from-emerald-400/30 via-emerald-300/10 to-transparent',
-  experience: 'from-amber-400/30 via-amber-300/10 to-transparent',
-  skills: 'from-blue-400/30 via-blue-300/10 to-transparent',
-  fundamentals: 'from-purple-400/30 via-purple-300/10 to-transparent',
+  introduction: 'from-red-600/20 via-red-900/10 to-transparent',
+  projects: 'from-emerald-500/20 via-emerald-950/10 to-transparent',
+  experience: 'from-amber-500/20 via-amber-950/10 to-transparent',
+  skills: 'from-blue-500/20 via-blue-950/10 to-transparent',
+  fundamentals: 'from-purple-500/20 via-purple-950/10 to-transparent',
 };
 
 // TTS Helper
@@ -189,7 +189,14 @@ export default function InterviewPage() {
       const res = await api.post('/end-interview', { interview_id: interviewId });
       navigate(`/reports/${res.data.id}`, { replace: true });
     } catch (err) {
-      alert('Failed to end interview.');
+      console.error('End interview error:', err);
+      // Fallback redirect to reports page if report was already created
+      if (err.response?.status === 409 || err.response?.data?.id) {
+        const rptId = err.response?.data?.id || `rpt_${interviewId.replace('int_', '')}`;
+        navigate(`/reports/${rptId}`, { replace: true });
+        return;
+      }
+      alert(err.response?.data?.detail || 'Failed to end interview.');
       setEnding(false);
     }
   };
@@ -259,7 +266,7 @@ export default function InterviewPage() {
         return;
       }
 
-      setVoiceError('Voice input is available in Chrome or Edge on this local app. This browser does not support live speech recognition yet, so please type your answer.');
+      setVoiceError('Voice input is available in Chrome or Edge on this app. Please type your answer below.');
     } catch (err) {
       console.error('Recording failed:', err);
       setVoiceError('Microphone access is required for voice input.');
@@ -280,193 +287,263 @@ export default function InterviewPage() {
   const glowGradient = SECTION_GLOW[currentSection] || SECTION_GLOW.introduction;
 
   return (
-    <div className="flex flex-col h-screen bg-[#050505] overflow-hidden" data-testid="interview-page">
-      {/* Top Bar */}
-      <div className="shrink-0 z-10">
-        <div className="h-14 flex items-center justify-between px-6 border-b border-white/5 bg-[#050505]/90 backdrop-blur-xl">
-          <div className="flex items-center gap-4">
-            <button data-testid="back-to-dashboard" onClick={() => navigate('/dashboard')} className="text-gray-600 hover:text-white transition-colors">
+    <div className="flex flex-col h-screen bg-[#050505] text-white overflow-hidden select-none font-sans" data-testid="interview-page">
+      {/* Top Header Bar */}
+      <header className="shrink-0 z-20 bg-[#0A0A0A]/95 backdrop-blur-2xl border-b border-white/10 shadow-2xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+          
+          {/* Left Metadata Pill */}
+          <div className="flex items-center gap-3">
+            <button
+              data-testid="back-to-dashboard"
+              onClick={() => navigate('/dashboard')}
+              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all border border-white/5"
+            >
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <span>Live</span>
-              <span className="text-gray-700">|</span>
-              <span className={`font-mono ${timeWarning ? 'text-red-400' : ''}`}>{formatTime(remainingTime)}</span>
-              <span className="text-gray-700">|</span>
-              <span data-testid="question-counter">Q{currentQ}/{totalQ}</span>
+
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#EF4444]" />
+              <span className="font-semibold tracking-wide text-gray-200">LIVE</span>
+              <span className="text-gray-600">|</span>
+              <span className={`font-mono font-medium ${timeWarning ? 'text-red-400 animate-pulse' : 'text-gray-300'}`}>
+                {formatTime(remainingTime)}
+              </span>
+              <span className="text-gray-600">|</span>
+              <span data-testid="question-counter" className="font-medium text-gray-300">
+                Q{currentQ}/{totalQ}
+              </span>
               {interviewConfig && (
                 <>
-                  <span className="text-gray-700">|</span>
-                  <span className="capitalize">{interviewConfig.interview_type}</span>
-                  <span className="text-gray-700">|</span>
-                  <span className="capitalize">{interviewConfig.level}</span>
+                  <span className="hidden md:inline text-gray-600">|</span>
+                  <span className="hidden md:inline capitalize text-gray-400">{interviewConfig.interview_type}</span>
+                  <span className="hidden lg:inline text-gray-600">|</span>
+                  <span className="hidden lg:inline capitalize text-gray-400">{interviewConfig.level}</span>
                 </>
               )}
             </div>
           </div>
+
+          {/* Right Control Bar */}
           <div className="flex items-center gap-2">
-            {/* Current section badge */}
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium ${sectionMeta.bg} ${sectionMeta.color}`} data-testid="current-section-badge">
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${sectionMeta.bg} ${sectionMeta.color}`} data-testid="current-section-badge">
               {sectionMeta.icon}
-              {sectionMeta.label}
+              <span>{sectionMeta.label}</span>
             </div>
-            <button data-testid="mute-toggle" onClick={toggleMute} className={`p-2 rounded-full text-xs transition-colors ${muted ? 'bg-red-500/10 text-red-400' : 'bg-white/5 text-gray-400 hover:text-white'}`}>
+
+            <button
+              data-testid="mute-toggle"
+              onClick={toggleMute}
+              className={`p-2 rounded-full text-xs transition-all border ${muted ? 'bg-red-500/20 border-red-500/30 text-red-400' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
+              title={muted ? "Unmute AI Voice" : "Mute AI Voice"}
+            >
               {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
-            <button data-testid="end-interview-btn" onClick={handleEndInterview} disabled={ending}
-              className="bg-red-500/10 text-red-400 hover:bg-red-500/20 px-4 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50">
-              {ending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Square className="w-3 h-3" />}
-              {ending ? 'Generating Report...' : 'End Interview'}
+
+            <button
+              data-testid="end-interview-btn"
+              onClick={() => handleEndInterview()}
+              disabled={ending}
+              className="bg-red-600 hover:bg-red-500 text-white px-4 py-1.5 rounded-full text-xs font-semibold shadow-lg shadow-red-600/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {ending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Square className="w-3.5 h-3.5 fill-white" />}
+              <span>{ending ? 'Finishing...' : 'End Interview'}</span>
             </button>
           </div>
         </div>
 
-        {/* Progress Bars */}
-        <div className="flex gap-0">
-          <div className="flex-1 h-0.5 bg-white/5">
-            <div className="h-full bg-white/30 transition-all duration-500" style={{ width: `${questionProgress}%` }} data-testid="question-progress-bar" />
-          </div>
-          <div className="flex-1 h-0.5 bg-white/5">
-            <div className={`h-full transition-all duration-500 ${timeWarning ? 'bg-red-400/50' : 'bg-white/15'}`} style={{ width: `${timeProgress}%` }} data-testid="time-progress-bar" />
-          </div>
+        {/* Dual Progress Lines */}
+        <div className="flex w-full h-1 bg-white/5">
+          <div className="h-full bg-red-600 shadow-[0_0_10px_#E50914] transition-all duration-500" style={{ width: `${questionProgress}%` }} data-testid="question-progress-bar" />
+          <div className={`h-full transition-all duration-500 ${timeWarning ? 'bg-red-500 animate-pulse' : 'bg-blue-500/40'}`} style={{ width: `${timeProgress}%` }} data-testid="time-progress-bar" />
         </div>
 
-        {/* Section Coverage */}
-        <div className="flex items-center gap-3 px-6 py-2 border-b border-white/5 bg-[#050505]">
+        {/* Section Coverage Bar */}
+        <div className="hidden sm:flex items-center justify-center gap-4 sm:gap-8 px-4 py-2 border-b border-white/5 bg-[#050505] text-xs">
           {Object.entries(coveredSections).map(([section, count]) => {
             const meta = SECTION_META[section] || SECTION_META.skills;
             const planned = interviewState?.question_plan?.distribution?.[section] || 0;
             const done = count >= planned && planned > 0;
             return (
-              <div key={section} className={`flex items-center gap-1.5 text-[10px] ${done ? meta.color : 'text-gray-600'}`} data-testid={`section-${section}`}>
+              <div key={section} className={`flex items-center gap-1.5 transition-colors ${done ? meta.color : 'text-gray-500'}`} data-testid={`section-${section}`}>
                 {meta.icon}
-                <span className="capitalize">{section}</span>
-                <span className="font-mono">{count}/{planned}</span>
+                <span className="capitalize font-medium">{section}</span>
+                <span className="font-mono text-[11px] opacity-75">{count}/{planned}</span>
               </div>
             );
           })}
         </div>
-      </div>
+      </header>
 
-      {/* Main Interview Area */}
-      <div className="flex-1 flex flex-col items-center justify-center relative px-6">
-        <div className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] ${glowGradient} opacity-90`} />
-        <div className="flex flex-col items-center gap-5 mb-6">
-          <div className={`relative`}>
-            <div className={`absolute inset-[-48px] rounded-full blur-3xl transition-all duration-500 ${isSpeaking ? 'opacity-100 scale-110' : 'opacity-60 scale-100'} bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] ${glowGradient}`} />
-            <div className={`absolute inset-0 rounded-full transition-all duration-500 ${isSpeaking ? 'animate-ping-slow bg-white/10 scale-125' : ''}`} />
-            <div className={`absolute inset-[-14px] rounded-full transition-all duration-300 ${isSpeaking ? 'border-2 border-white/25 animate-pulse' : 'border border-white/5'}`} />
-            <div className={`absolute inset-[-28px] rounded-full border transition-all duration-500 ${isSpeaking ? 'border-white/15 scale-110 animate-orbit-glow' : 'border-white/5 scale-100'}`} />
-            <div className={`w-24 h-24 rounded-full bg-white flex items-center justify-center relative z-10 transition-all duration-300 ${isSpeaking ? 'shadow-[0_0_90px_rgba(255,255,255,0.18)] scale-105' : 'shadow-[0_0_30px_rgba(255,255,255,0.08)]'}`}>
-              <span className="text-black font-bold text-3xl" style={{ fontFamily: 'Outfit' }}>K</span>
+      {/* Main Stage Room */}
+      <main className="flex-1 min-h-0 overflow-y-auto relative flex flex-col items-center justify-between p-4 sm:p-8">
+        
+        {/* Background Ambient Netflix Glow */}
+        <div className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] ${glowGradient} opacity-60 transition-all duration-1000`} />
+
+        {/* Kevin AI Avatar Stage */}
+        <div className="relative z-10 flex flex-col items-center justify-center my-auto w-full max-w-2xl space-y-6">
+          
+          {/* Pulsating Glowing Rings & Avatar */}
+          <div className="relative flex items-center justify-center my-4">
+            <div className={`absolute inset-[-50px] rounded-full blur-3xl transition-all duration-700 ${isSpeaking ? 'bg-red-600/30 scale-125 opacity-100' : 'bg-blue-600/15 scale-100 opacity-50'}`} />
+            <div className={`absolute inset-[-20px] rounded-full transition-all duration-500 border ${isSpeaking ? 'border-red-500/40 animate-ping-slow scale-110' : 'border-white/10 scale-100'}`} />
+            <div className={`absolute inset-[-10px] rounded-full border transition-all duration-300 ${isSpeaking ? 'border-red-500/60 animate-pulse' : 'border-white/10'}`} />
+
+            <div className={`w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-b from-gray-900 to-black border-2 flex items-center justify-center relative z-10 transition-all duration-500 shadow-2xl ${
+              isSpeaking ? 'border-red-500 shadow-[0_0_50px_rgba(229,9,20,0.4)] scale-105' : 'border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.8)]'
+            }`}>
+              <span className="text-white font-black text-4xl sm:text-5xl tracking-tighter" style={{ fontFamily: 'Outfit' }}>K</span>
             </div>
           </div>
 
+          {/* AI Status Title */}
           <div className="text-center">
-            <h2 className="text-lg font-medium tracking-tight" style={{ fontFamily: 'Outfit' }}>Kevin</h2>
-            <p className="text-[11px] text-gray-500 mt-0.5">
-              {sending ? 'Thinking...' : isSpeaking ? 'Speaking...' : isRecording ? 'Listening...' : transcribing ? 'Processing...' : 'Waiting for your answer'}
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white" style={{ fontFamily: 'Outfit' }}>Kevin AI</h2>
+            <p className="text-xs sm:text-sm text-gray-400 mt-1 font-medium">
+              {sending ? 'Thinking...' : isSpeaking ? 'Speaking...' : isRecording ? 'Listening to your answer...' : transcribing ? 'Transcribing...' : 'Waiting for your answer'}
             </p>
           </div>
 
+          {/* Spoken Question Text Box */}
           {currentSpokenText && (
-            <div className="max-w-lg text-center">
-              <p className="text-sm text-gray-400 leading-relaxed line-clamp-3">{currentSpokenText}</p>
+            <div className="w-full bg-[#0A0A0A]/90 border border-white/10 rounded-2xl p-5 sm:p-6 backdrop-blur-xl shadow-2xl text-center transition-all duration-300">
+              <p className="text-sm sm:text-base text-gray-200 leading-relaxed font-normal">
+                "{currentSpokenText}"
+              </p>
             </div>
           )}
 
+          {/* Live Captions & Error Messages */}
           {(liveTranscript || voiceError || responseError) && (
-            <div className="max-w-lg w-full text-center space-y-2">
+            <div className="w-full text-center space-y-2">
               {liveTranscript && (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-gray-600 mb-1">Live Caption</p>
-                  <p className="text-sm text-gray-300 leading-relaxed">{liveTranscript}</p>
+                <div className="rounded-2xl border border-red-500/20 bg-red-950/20 px-5 py-3.5 backdrop-blur-md">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-red-400 mb-1">Live Caption</p>
+                  <p className="text-sm text-gray-200 leading-relaxed font-medium">{liveTranscript}</p>
                 </div>
               )}
-              {voiceError && (
-                <p className="text-xs text-amber-400">{voiceError}</p>
-              )}
-              {responseError && (
-                <p className="text-xs text-red-400">{responseError}</p>
-              )}
+              {voiceError && <p className="text-xs text-amber-400 bg-amber-950/30 border border-amber-500/20 py-2 px-4 rounded-xl">{voiceError}</p>}
+              {responseError && <p className="text-xs text-red-400 bg-red-950/30 border border-red-500/20 py-2 px-4 rounded-xl">{responseError}</p>}
+            </div>
+          )}
+
+          {/* Dynamic Voice Waveform Animation */}
+          {(isSpeaking || isRecording) && (
+            <div className="flex items-center justify-center gap-1.5 py-2" data-testid="voice-waveform">
+              {Array.from({ length: 24 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-1 rounded-full transition-all ${isRecording ? 'bg-red-500 shadow-[0_0_8px_#EF4444]' : 'bg-blue-400 shadow-[0_0_8px_#60A5FA]'}`}
+                  style={{
+                    height: `${Math.sin(i + Date.now()) * 14 + 16}px`,
+                    animation: `wave 0.7s ease-in-out ${i * 0.04}s infinite alternate`,
+                  }}
+                />
+              ))}
             </div>
           )}
         </div>
 
-        {(isSpeaking || isRecording) && (
-          <div className="flex items-center gap-1 mb-5" data-testid="voice-waveform">
-            {Array.from({ length: 20 }).map((_, i) => (
-              <div key={i} className={`w-1 rounded-full ${isRecording ? 'bg-red-400' : 'bg-white/40'}`}
-                style={{ height: `${Math.random() * 24 + 8}px`, animation: `wave 0.8s ease-in-out ${i * 0.05}s infinite alternate` }} />
-            ))}
-          </div>
-        )}
-
-        <div className="flex flex-col items-center gap-3">
-          <button data-testid="voice-input-btn" onClick={isRecording ? stopRecording : startRecording}
-            disabled={sending || ending || transcribing}
-            className={`relative w-18 h-18 rounded-full flex items-center justify-center transition-all duration-300 ${
-              isRecording ? 'bg-red-500 text-white scale-110 shadow-[0_0_40px_rgba(239,68,68,0.3)]'
-                : transcribing ? 'bg-white/10 text-gray-400' : 'bg-white text-black hover:shadow-[0_0_40px_rgba(255,255,255,0.15)] hover:scale-105'
-            } disabled:opacity-40`} style={{ width: '72px', height: '72px' }}>
-            {transcribing ? <Loader2 className="w-6 h-6 animate-spin" /> : isRecording ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-            {isRecording && <span className="absolute inset-0 rounded-full border-2 border-red-400 animate-ping opacity-40" />}
-          </button>
-          <p className="text-[10px] text-gray-600">
-            {isRecording
-              ? 'Tap to stop and submit your answer'
-              : transcribing
-                ? 'Transcribing on the server...'
-                : browserSpeechSupported
-                  ? 'Tap to speak with browser voice input'
-                  : 'Voice input works best in Chrome or Edge. You can still type below.'}
-          </p>
-        </div>
-
-        <div className="w-full max-w-lg mt-5">
-          <div className="bg-[#0A0A0A] border border-white/8 rounded-xl flex items-center px-4 py-2 gap-2 focus-within:border-white/20 transition-all">
-            <input data-testid="interview-input" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
-              placeholder="Or type your answer..." className="flex-1 bg-transparent text-sm text-white placeholder:text-gray-700 outline-none" disabled={sending || ending} />
-            <button data-testid="send-message-btn" onClick={() => handleSend()} disabled={!input.trim() || sending || ending}
-              className="p-1.5 rounded-full bg-white/10 text-gray-400 hover:bg-white hover:text-black transition-all disabled:opacity-20">
-              <Send className="w-3.5 h-3.5" />
+        {/* Bottom Interaction Control Panel */}
+        <div className="relative z-10 w-full max-w-xl flex flex-col items-center gap-4 mt-auto">
+          
+          {/* Main Glowing Mic Button */}
+          <div className="flex flex-col items-center gap-2">
+            <button
+              data-testid="voice-input-btn"
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={sending || ending || transcribing}
+              className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl ${
+                isRecording
+                  ? 'bg-red-600 text-white scale-110 shadow-[0_0_50px_rgba(229,9,20,0.6)]'
+                  : transcribing
+                  ? 'bg-white/10 text-gray-400'
+                  : 'bg-white text-black hover:bg-gray-200 hover:scale-105 shadow-[0_0_35px_rgba(255,255,255,0.2)]'
+              } disabled:opacity-40`}
+            >
+              {transcribing ? (
+                <Loader2 className="w-8 h-8 animate-spin" />
+              ) : isRecording ? (
+                <MicOff className="w-8 h-8" />
+              ) : (
+                <Mic className="w-8 h-8" />
+              )}
+              {isRecording && <span className="absolute inset-0 rounded-full border-2 border-red-500 animate-ping opacity-60" />}
             </button>
+
+            <span className="text-xs text-gray-400 font-medium">
+              {isRecording
+                ? 'Tap to finish & submit answer'
+                : transcribing
+                ? 'Processing speech...'
+                : browserSpeechSupported
+                ? 'Tap microphone to speak'
+                : 'Type your answer below'}
+            </span>
+          </div>
+
+          {/* Text Input Box */}
+          <div className="w-full">
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl flex items-center px-4 py-3 gap-3 focus-within:border-white/30 transition-all shadow-xl">
+              <input
+                data-testid="interview-input"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Or type your detailed answer here..."
+                className="flex-1 bg-transparent text-sm text-white placeholder:text-gray-500 outline-none"
+                disabled={sending || ending}
+              />
+              <button
+                data-testid="send-message-btn"
+                onClick={() => handleSend()}
+                disabled={!input.trim() || sending || ending}
+                className="p-2 rounded-xl bg-red-600 text-white hover:bg-red-500 transition-all disabled:opacity-20 shadow-md shadow-red-600/20"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* Transcript Toggle */}
-      <div className="shrink-0">
-        <button data-testid="toggle-transcript" onClick={() => setShowTranscript(!showTranscript)}
-          className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-600 hover:text-gray-400 transition-colors border-t border-white/5 bg-[#050505]">
-          {showTranscript ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-          {showTranscript ? 'Hide' : 'Show'} Transcript ({messages.length} messages)
+      {/* Transcript Drawer */}
+      <footer className="shrink-0 z-20 bg-[#0A0A0A] border-t border-white/10">
+        <button
+          data-testid="toggle-transcript"
+          onClick={() => setShowTranscript(!showTranscript)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-xs text-gray-400 hover:text-white transition-colors"
+        >
+          {showTranscript ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+          <span>{showTranscript ? 'Hide' : 'Show'} Full Transcript ({messages.length} messages)</span>
         </button>
+
         {showTranscript && (
-          <div className="max-h-48 overflow-auto border-t border-white/5 bg-[#080808] px-6 py-4 space-y-3" data-testid="transcript-panel">
+          <div className="max-h-56 overflow-y-auto border-t border-white/5 bg-[#050505] px-6 py-4 space-y-3" data-testid="transcript-panel">
             {messages.map((msg, i) => (
               <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                 {msg.role === 'assistant' && (
-                  <div className="w-5 h-5 rounded-full bg-white text-black flex items-center justify-center shrink-0 text-[8px] font-bold mt-0.5" style={{ fontFamily: 'Outfit' }}>K</div>
+                  <div className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 text-[10px] font-bold" style={{ fontFamily: 'Outfit' }}>
+                    K
+                  </div>
                 )}
                 <div className={`max-w-[85%] ${msg.role === 'user' ? 'text-right' : ''}`}>
-                  <p className="text-[10px] text-gray-600 mb-0.5">{msg.role === 'assistant' ? 'Kevin' : 'You'}</p>
-                  <p className={`text-xs leading-relaxed ${msg.role === 'user' ? 'text-gray-400' : 'text-gray-300'}`}>{msg.content}</p>
+                  <p className="text-[10px] text-gray-500 mb-0.5 font-medium">{msg.role === 'assistant' ? 'Kevin AI' : 'You'}</p>
+                  <div className={`p-3 rounded-2xl text-xs leading-relaxed ${msg.role === 'user' ? 'bg-white/10 text-gray-200' : 'bg-[#0A0A0A] border border-white/5 text-gray-300'}`}>
+                    {msg.content}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </footer>
 
       <style>{`
-        @keyframes wave { from { height: 6px; } to { height: 28px; } }
-        @keyframes ping-slow { 0% { transform: scale(1); opacity: 0.4; } 100% { transform: scale(1.3); opacity: 0; } }
-        @keyframes orbit-glow { 0% { transform: scale(1.02); opacity: 0.35; } 50% { transform: scale(1.1); opacity: 0.7; } 100% { transform: scale(1.02); opacity: 0.35; } }
-        .animate-ping-slow { animation: ping-slow 2s ease-out infinite; }
-        .animate-orbit-glow { animation: orbit-glow 2.8s ease-in-out infinite; }
-        .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        @keyframes wave { from { height: 6px; } to { height: 32px; } }
+        @keyframes ping-slow { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.35); opacity: 0; } }
+        .animate-ping-slow { animation: ping-slow 2.2s ease-out infinite; }
       `}</style>
     </div>
   );

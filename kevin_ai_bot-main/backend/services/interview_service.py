@@ -176,9 +176,19 @@ async def progress_interview(user: dict, interview_id: str, user_answer: str) ->
 
 async def finish_interview(user: dict, interview_id: str) -> dict:
     interview = await get_interview_for_user(user["id"], interview_id)
+
+    # Idempotency check: Return existing report if already ended
+    if interview.get("status") == "completed":
+        existing_report = await database.reports.find_one({"interviewId": interview_id}, {"_id": 0})
+        if existing_report:
+            if existing_report.get("createdAt"):
+                existing_report["createdAt"] = _as_utc_datetime(existing_report["createdAt"]).isoformat()
+            return existing_report
+
     messages = interview.get("messages", [])
     meaningful_count = sum(1 for item in messages if item["role"] == "user" and len(item["content"].strip()) >= 10)
     now = utc_now()
+
 
     # Calculate exact interview duration for 2-minute rule
     started_at = _as_utc_datetime(interview.get("startedAt")) or now

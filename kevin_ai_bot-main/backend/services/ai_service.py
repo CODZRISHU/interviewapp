@@ -81,18 +81,22 @@ async def _chat_json(system_prompt: str, user_prompt: str, fallback: Dict[str, A
     if not client:
         return fallback
 
-    response = await client.chat.completions.create(
-        model=settings.openai_model,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.4,
-    )
-    content = response.choices[0].message.content or "{}"
-    parsed = _extract_json_object(content)
-    return parsed if parsed else fallback
+    try:
+        response = await client.chat.completions.create(
+            model=settings.openai_model,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.4,
+        )
+        content = response.choices[0].message.content or "{}"
+        parsed = _extract_json_object(content)
+        return parsed if parsed else fallback
+    except Exception:
+        return fallback
+
 
 
 def _difficulty(config: Dict[str, Any]) -> str:
