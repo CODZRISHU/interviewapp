@@ -543,15 +543,17 @@ async def ensure_interview_access(user: dict, duration_minutes: int) -> tuple[di
                 detail=f"No credits available for {duration_minutes}-minute interviews on your current plan. Please upgrade.",
             )
 
-    # 3. Zero Bypass: Prevent concurrent active sessions
+    # 3. Clean up any stale active sessions for this user so starting a new interview works seamlessly
     active_interview = await database.interviews.find_one({"userId": user["id"], "status": "active"})
     if active_interview:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="You already have an active interview session in progress. Please complete or end it before starting a new one.",
+        now = _now()
+        await database.interviews.update_one(
+            {"id": active_interview["id"]},
+            {"$set": {"status": "completed", "endedAt": now}},
         )
 
     return user, bucket_key
+
 
 
 async def consume_credit_for_interview(user_id: str, interview_id: str, duration_minutes: int, elapsed_seconds: float) -> dict:
