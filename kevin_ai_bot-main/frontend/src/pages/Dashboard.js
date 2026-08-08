@@ -113,20 +113,33 @@ export default function Dashboard() {
 
       {/* Credit Buckets Card */}
       {(() => {
-        const buckets = user?.entitlements?.creditBuckets || user?.creditBuckets || {};
-        const b10 = buckets["10m"] || {};
-        const b15 = buckets["15m"] || {};
-        const b30 = buckets["30m"] || {};
+        const mainBuckets = user?.entitlements?.mainCreditBuckets || user?.mainCreditBuckets || {};
+        const topupBuckets = user?.entitlements?.topupCreditBuckets || user?.topupCreditBuckets || {};
+        const combined = user?.entitlements?.creditBuckets || user?.creditBuckets || {};
+
+        const m10 = mainBuckets["10m"] || {};
+        const m15 = mainBuckets["15m"] || {};
+        const m30 = mainBuckets["30m"] || {};
+
+        const t10 = topupBuckets["10m"] || {};
+        const t15 = topupBuckets["15m"] || {};
+
+        const topupEligibility = user?.entitlements?.topupEligibility || {
+          eligible: false,
+          scenario: "D",
+          message: "Subscribe to a plan first to unlock top-ups.",
+        };
 
         return (
-          <div className="netflix-card rounded-3xl p-6 md:p-8 relative overflow-hidden">
+          <div className="netflix-card rounded-3xl p-6 md:p-8 relative overflow-hidden space-y-6">
             <div className="absolute top-0 right-0 w-80 h-80 bg-[#E50914]/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative z-10">
+            
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
               <div className="space-y-4 flex-1">
                 <div className="flex items-center gap-3">
                   <CreditCard className="w-5 h-5 text-[#E50914]" />
                   <h2 className="text-xl font-bold text-white" style={{ fontFamily: 'Outfit' }}>
-                    Active Plan & Credit Balances
+                    Active Plan & Credit Tracker
                   </h2>
                   <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider ${
                     user?.planKey === "premium_199" ? "bg-amber-500/20 border border-amber-500/40 text-amber-300" :
@@ -137,66 +150,97 @@ export default function Dashboard() {
                   </span>
                 </div>
 
-                {/* Credit Progress Bars */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
-                    <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
-                      <span>10-Minute Interviews</span>
-                      <span className="font-bold text-white">
-                        {b10.remaining ?? (user?.creditsRemaining || 0)} Left
-                      </span>
+                {/* Main Plan Credit Progress Bars */}
+                <div>
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    Main Plan Credits
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
+                      <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
+                        <span>10-Minute Interviews</span>
+                        <span className="font-bold text-white">
+                          {m10.remaining ?? 0} / {m10.total ?? 0} Left
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-red-600 to-[#E50914] transition-all duration-500"
+                          style={{
+                            width: `${Math.min(((m10.remaining ?? 0) / maxVal(m10.total, 1)) * 100, 100)}%`,
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-red-600 to-[#E50914] transition-all duration-500"
-                        style={{
-                          width: `${Math.min(
-                            ((b10.remaining ?? 1) / maxVal(b10.total, 1)) * 100,
-                            100
-                          )}%`,
-                        }}
-                      />
+
+                    <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
+                      <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
+                        <span>15-Minute Interviews</span>
+                        <span className="font-bold text-white">
+                          {m15.remaining ?? 0} / {m15.total ?? 0} Left
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-purple-600 to-indigo-500 transition-all duration-500"
+                          style={{
+                            width: `${Math.min(((m15.remaining ?? 0) / maxVal(m15.total, 1)) * 100, 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
+                      <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
+                        <span>30-Minute Interviews</span>
+                        <span className="font-bold text-white">
+                          {m30.remaining ?? 0} / {m30.total ?? 0} Left
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-500"
+                          style={{
+                            width: `${Math.min(((m30.remaining ?? 0) / maxVal(m30.total, 1)) * 100, 100)}%`,
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
+                </div>
 
-                  <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
-                    <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
-                      <span>15-Minute Interviews</span>
-                      <span className="font-bold text-white">
-                        {b15.remaining ?? 0} Left
-                      </span>
-                    </div>
-                    <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-purple-600 to-indigo-500 transition-all duration-500"
-                        style={{
-                          width: `${Math.min(
-                            ((b15.remaining ?? 0) / maxVal(b15.total, 1)) * 100,
-                            100
-                          )}%`,
-                        }}
-                      />
-                    </div>
+                {/* Top-Up Credits & Status */}
+                <div className="pt-2">
+                  <div className="flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    <span>Top-Up Credits & Eligibility</span>
+                    <span className={topupEligibility.eligible ? "text-emerald-400" : "text-amber-400"}>
+                      {topupEligibility.eligible ? "Top-Up Available" : "Top-Up Locked"}
+                    </span>
                   </div>
+                  <div className="p-4 rounded-2xl bg-black/40 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-6 text-xs text-gray-300">
+                      <div>
+                        <span className="text-gray-400">10-Min Top-Up:</span>{" "}
+                        <b className="text-white text-sm ml-1">{t10.remaining ?? 0} remaining</b>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">15-Min Top-Up:</span>{" "}
+                        <b className="text-white text-sm ml-1">{t15.remaining ?? 0} remaining</b>
+                      </div>
+                    </div>
 
-                  <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
-                    <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
-                      <span>30-Minute Interviews</span>
-                      <span className="font-bold text-white">
-                        {b30.remaining ?? 0} Left
+                    {topupEligibility.eligible ? (
+                      <button
+                        onClick={() => navigate('/subscription')}
+                        className="netflix-btn-red px-4 py-2 rounded-xl text-xs font-bold shrink-0"
+                      >
+                        Recharge Now
+                      </button>
+                    ) : (
+                      <span className="text-[11px] text-gray-400 italic">
+                        {topupEligibility.message}
                       </span>
-                    </div>
-                    <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-500"
-                        style={{
-                          width: `${Math.min(
-                            ((b30.remaining ?? 0) / maxVal(b30.total, 1)) * 100,
-                            100
-                          )}%`,
-                        }}
-                      />
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -206,7 +250,7 @@ export default function Dashboard() {
                   onClick={() => navigate('/subscription')}
                   className="netflix-btn-red px-6 py-3 rounded-xl font-bold text-xs shadow-md text-center"
                 >
-                  {user?.planKey === "free_trial" ? "Upgrade Subscription" : "Manage Plan"}
+                  {user?.planKey === "free_trial" ? "Upgrade Subscription" : "Manage Subscription"}
                 </button>
                 <button
                   onClick={() => navigate('/payments')}

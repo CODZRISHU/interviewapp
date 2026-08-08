@@ -92,6 +92,45 @@ PURCHASE_ITEMS: Dict[str, PurchaseItem] = {
         savings_text="Best Value & Full Unlock",
         fair_usage_policy=True,
     ),
+    # Top-Up Plans
+    "topup_x_59": PurchaseItem(
+        key="topup_x_59",
+        purchase_type="addon",
+        billing_model="one_time",
+        display_name="TOP-X",
+        amount_inr=59,
+        credits=3,
+        max_duration_minutes=10,
+        plan_group="topup",
+        bucket_breakdown={"10m": 3, "15m": 0, "30m": 0},
+        fair_usage_policy=True,
+    ),
+    "topup_y_99": PurchaseItem(
+        key="topup_y_99",
+        purchase_type="addon",
+        billing_model="one_time",
+        display_name="TOP-Y",
+        amount_inr=99,
+        credits=6,
+        max_duration_minutes=10,
+        plan_group="topup",
+        bucket_breakdown={"10m": 6, "15m": 0, "30m": 0},
+        tag="Popular Top-Up",
+        highlighted=True,
+        fair_usage_policy=True,
+    ),
+    "topup_z_149": PurchaseItem(
+        key="topup_z_149",
+        purchase_type="addon",
+        billing_model="one_time",
+        display_name="TOP-Z",
+        amount_inr=149,
+        credits=9,
+        max_duration_minutes=15,
+        plan_group="topup",
+        bucket_breakdown={"10m": 6, "15m": 3, "30m": 0},
+        fair_usage_policy=True,
+    ),
     # Backward compatibility
     "starter_monthly": PurchaseItem(
         key="starter_monthly",
@@ -122,6 +161,7 @@ PURCHASE_ITEMS: Dict[str, PurchaseItem] = {
 }
 
 SUBSCRIPTION_PLAN_KEYS = {"basic_99", "premium_199", "starter_monthly", "pro_monthly"}
+TOPUP_PLAN_KEYS = {"topup_x_59", "topup_y_99", "topup_z_149"}
 BILLING_STATUSES = {"trial_available", "trial_used", "active", "past_due", "cancelled", "expired"}
 
 
@@ -151,7 +191,6 @@ def _timestamp_to_datetime(value: Any) -> Optional[datetime]:
         return datetime.fromtimestamp(int(value), tz=_now().tzinfo)
     except Exception:
         return None
-
 
 
 def _build_basic_auth_header() -> str:
@@ -185,9 +224,14 @@ async def get_public_catalog() -> dict:
         _plan_to_public_dict(PURCHASE_ITEMS[key])
         for key in ["free_trial", "basic_99", "premium_199"]
     ]
+    topups = [
+        _plan_to_public_dict(PURCHASE_ITEMS[key])
+        for key in ["topup_x_59", "topup_y_99", "topup_z_149"]
+    ]
     return {
         "plans": plans,
-        "addons": [],
+        "topups": topups,
+        "addons": topups,
         "meta": {
             "currency": "INR",
             "supportEmail": settings.support_email,
@@ -203,6 +247,16 @@ def _default_credit_fields() -> dict:
         "totalCredits": 1,
         "creditsUsed": 0,
         "creditsRemaining": 1,
+        "mainCreditBuckets": {
+            "10m": {"total": 1, "used": 0, "remaining": 1},
+            "15m": {"total": 0, "used": 0, "remaining": 0},
+            "30m": {"total": 0, "used": 0, "remaining": 0},
+        },
+        "topupCreditBuckets": {
+            "10m": {"total": 0, "used": 0, "remaining": 0},
+            "15m": {"total": 0, "used": 0, "remaining": 0},
+            "30m": {"total": 0, "used": 0, "remaining": 0},
+        },
         "creditBuckets": {
             "10m": {"total": 1, "used": 0, "remaining": 1},
             "15m": {"total": 0, "used": 0, "remaining": 0},
@@ -223,13 +277,41 @@ def _default_credit_fields() -> dict:
 def normalize_user_billing_document(user: dict) -> dict:
     defaults = _default_credit_fields()
     result = {key: user.get(key, value) for key, value in defaults.items()}
-    if not isinstance(result.get("creditBuckets"), dict):
-        result["creditBuckets"] = defaults["creditBuckets"]
+    if not isinstance(result.get("mainCreditBuckets"), dict):
+        result["mainCreditBuckets"] = defaults["mainCreditBuckets"]
+    if not isinstance(result.get("topupCreditBuckets"), dict):
+        result["topupCreditBuckets"] = defaults["topupCreditBuckets"]
+
+    combined_buckets = {}
+    total_combined_remaining = 0
+    total_combined_used = 0
+    total_combined_capacity = 0
+
     for b in ("10m", "15m", "30m"):
-        if b not in result["creditBuckets"]:
-            result["creditBuckets"][b] = {"total": 0, "used": 0, "remaining": 0}
-        b_dict = result["creditBuckets"][b]
-        b_dict["remaining"] = max(int(b_dict.get("total", 0)) - int(b_dict.get("used", 0)), 0)
+        if b not in result["mainCreditBuckets"]:
+            result["mainCreditBuckets"][b] = {"total": 0, "used": 0, "remaining": 0}
+        if b not in result["topupCreditBuckets"]:
+            result["topupCreditBuckets"][b] = {"total": 0, "used": 0, "remaining": 0}
+
+        m = result["mainCreditBuckets"][b]
+        t = result["topupCreditBuckets"][b]
+
+        m["remaining"] = max(int(m.get("total", 0)) - int(m.get("used", 0)), 0)
+        t["remaining"] = max(int(t.get("total", 0)) - int(t.get("used", 0)), 0)
+
+        tot = int(m.get("total", 0)) + int(t.get("total", 0))
+        used = int(m.get("used", 0)) + int(t.get("used", 0))
+        rem = m["remaining"] + t["remaining"]
+
+        combined_buckets[b] = {"total": tot, "used": used, "remaining": rem}
+        total_combined_capacity += tot
+        total_combined_used += used
+        total_combined_remaining += rem
+
+    result["creditBuckets"] = combined_buckets
+    result["totalCredits"] = total_combined_capacity
+    result["creditsUsed"] = total_combined_used
+    result["creditsRemaining"] = total_combined_remaining
     return result
 
 
@@ -237,6 +319,62 @@ def _plan_status_for_user(user: dict) -> str:
     if user.get("billingStatus") in BILLING_STATUSES:
         return user["billingStatus"]
     return "trial_used" if user.get("trialUsed") else "trial_available"
+
+
+def check_topup_eligibility(user: dict) -> dict:
+    snapshot = normalize_user_billing_document(user)
+    status_val = _plan_status_for_user(snapshot)
+
+    if snapshot.get("planKey") == "free_trial" or snapshot.get("plan") == "free":
+        return {
+            "eligible": False,
+            "scenario": "D",
+            "message": "Subscribe to a plan first to unlock top-ups.",
+            "validUntil": None,
+        }
+
+    if status_val == "expired":
+        return {
+            "eligible": False,
+            "scenario": "C",
+            "message": "Your subscription has expired. Choose a new plan to continue.",
+            "validUntil": None,
+        }
+
+    if status_val != "active":
+        return {
+            "eligible": False,
+            "scenario": "C",
+            "message": "Subscribe to a plan first to unlock top-ups.",
+            "validUntil": None,
+        }
+
+    main_buckets = snapshot.get("mainCreditBuckets", {})
+    main_remaining = sum(b.get("remaining", 0) for b in main_buckets.values())
+    if main_remaining > 0:
+        return {
+            "eligible": False,
+            "scenario": "A",
+            "message": "Top-ups are locked until your current plan credits are exhausted.",
+            "validUntil": snapshot.get("currentPeriodEnd"),
+        }
+
+    topup_buckets = snapshot.get("topupCreditBuckets", {})
+    topup_remaining = sum(b.get("remaining", 0) for b in topup_buckets.values())
+    if topup_remaining > 0:
+        return {
+            "eligible": False,
+            "scenario": "A_TOPUP_ACTIVE",
+            "message": "Your top-up credits are active. Recharge again when current top-up capacity is exhausted.",
+            "validUntil": snapshot.get("currentPeriodEnd"),
+        }
+
+    return {
+        "eligible": True,
+        "scenario": "B",
+        "message": "Top-up Available",
+        "validUntil": snapshot.get("currentPeriodEnd"),
+    }
 
 
 async def reconcile_user_billing_state(user: dict) -> dict:
@@ -249,14 +387,25 @@ async def reconcile_user_billing_state(user: dict) -> dict:
     if status_value in {"active", "cancelled"} and current_period_end:
         end_dt = _timestamp_to_datetime(current_period_end)
         if end_dt and end_dt <= now:
-            if snapshot["planKey"] in SUBSCRIPTION_PLAN_KEYS:
+            if snapshot["planKey"] in SUBSCRIPTION_PLAN_KEYS or snapshot["planKey"] in TOPUP_PLAN_KEYS:
                 status_value = "expired"
+                zero_buckets = {
+                    "10m": {"total": 0, "used": 0, "remaining": 0},
+                    "15m": {"total": 0, "used": 0, "remaining": 0},
+                    "30m": {"total": 0, "used": 0, "remaining": 0},
+                }
                 updates.update(
                     {
                         "billingStatus": "expired",
                         "currentPeriodStart": None,
                         "currentPeriodEnd": None,
                         "cancelAtPeriodEnd": False,
+                        "mainCreditBuckets": zero_buckets,
+                        "topupCreditBuckets": zero_buckets,
+                        "creditBuckets": zero_buckets,
+                        "totalCredits": 0,
+                        "creditsUsed": 0,
+                        "creditsRemaining": 0,
                     }
                 )
 
@@ -282,24 +431,29 @@ def _derive_plan_context(user: dict) -> PurchaseItem:
 def build_entitlements(user: dict) -> dict:
     snapshot = normalize_user_billing_document(user)
     current_item = _derive_plan_context(snapshot)
+    topup_eligibility = check_topup_eligibility(snapshot)
 
-    total_remaining = sum(b.get("remaining", 0) for b in snapshot["creditBuckets"].values())
+    total_remaining = snapshot["creditsRemaining"]
 
     return {
         "planKey": snapshot["planKey"],
         "planName": current_item.display_name,
         "planGroup": current_item.plan_group,
         "billingStatus": _plan_status_for_user(snapshot),
-        "totalCredits": int(snapshot.get("totalCredits", 0)),
-        "usedCredits": int(snapshot.get("creditsUsed", 0)),
+        "totalCredits": snapshot["totalCredits"],
+        "usedCredits": snapshot["creditsUsed"],
         "remainingCredits": total_remaining,
         "creditBuckets": snapshot["creditBuckets"],
+        "mainCreditBuckets": snapshot["mainCreditBuckets"],
+        "topupCreditBuckets": snapshot["topupCreditBuckets"],
+        "topupEligibility": topup_eligibility,
         "maxDurationMinutes": current_item.max_duration_minutes,
         "canStartInterview": total_remaining > 0 and _plan_status_for_user(snapshot) not in {"expired"},
         "trialAvailable": not snapshot.get("trialUsed", False),
         "trialUsed": bool(snapshot.get("trialUsed", False)),
         "nextBillingDate": snapshot.get("currentPeriodEnd"),
         "currentPeriodStart": snapshot.get("currentPeriodStart"),
+        "currentPeriodEnd": snapshot.get("currentPeriodEnd"),
         "fairUsagePolicy": True,
         "showUpgradeNudge": total_remaining <= 1 or _plan_status_for_user(snapshot) in {"expired", "trial_used"},
         "creditProgressPercent": 0 if snapshot.get("totalCredits", 0) <= 0 else round((int(snapshot.get("creditsUsed", 0)) / max(int(snapshot.get("totalCredits", 1)), 1)) * 100),
@@ -322,6 +476,7 @@ async def get_user_billing_snapshot(user: dict) -> dict:
         },
         "entitlements": build_entitlements(refreshed_user),
         "plans": catalog["plans"],
+        "topups": catalog["topups"],
         "addons": catalog["addons"],
         "meta": catalog["meta"],
         "razorpayKeyId": settings.razorpay_key_id or "rzp_test_mock_key_id",
@@ -334,6 +489,27 @@ async def create_razorpay_order(item_key: str, user: dict) -> dict:
 
     if item.key == "free_trial":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Free plan does not require payment.")
+
+    snapshot = normalize_user_billing_document(user)
+    status_val = _plan_status_for_user(snapshot)
+
+    # 1. Main Subscription Rule: Only 1 active main paid subscription allowed
+    if item.purchase_type == "plan":
+        if status_val == "active" and snapshot.get("currentPeriodEnd"):
+            end_str = str(snapshot["currentPeriodEnd"])
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Your current plan is active until {end_str}. You cannot purchase another main plan until your current plan expires."
+            )
+
+    # 2. Top-Up Eligibility Rule
+    if item.purchase_type == "addon":
+        eligibility = check_topup_eligibility(user)
+        if not eligibility["eligible"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=eligibility["message"]
+            )
 
     amount_paise = item.amount_inr * 100
     receipt_id = f"rcpt_{user['id'][-6:]}_{int(datetime.now().timestamp())}"
@@ -402,37 +578,60 @@ async def verify_razorpay_payment(user: dict, order_id: str, payment_id: str, si
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Razorpay signature. Payment verification failed.")
 
     now = _now()
-    period_start = now
-    period_end = now + timedelta(days=item.valid_for_days or 30)
-
-    # Calculate GST (18%)
     subtotal = float(item.amount_inr)
     gst_amount = round(subtotal * 0.18, 2)
     total_amount = round(subtotal + gst_amount, 2)
     invoice_number = f"INV-{now.strftime('%Y%m%d')}-{utc_now().microsecond:06d}"[:18]
 
-    # Prepare credit buckets
-    new_buckets = {}
-    total_new_credits = 0
-    for b_key, b_count in item.bucket_breakdown.items():
-        new_buckets[b_key] = {"total": b_count, "used": 0, "remaining": b_count}
-        total_new_credits += b_count
+    snapshot = normalize_user_billing_document(user)
 
-    # Update User document
-    user_updates = {
-        "planKey": item.key,
-        "plan": item.plan_group,
-        "billingStatus": "active",
-        "currentPeriodStart": period_start,
-        "currentPeriodEnd": period_end,
-        "totalCredits": total_new_credits,
-        "creditsUsed": 0,
-        "creditsRemaining": total_new_credits,
-        "creditBuckets": new_buckets,
-        "paymentProvider": "razorpay",
-        "providerSubscriptionId": order_id,
-        "cancelAtPeriodEnd": False,
-    }
+    if item.purchase_type == "addon":
+        # Top-Up inherits current main subscription expiry date!
+        period_start = now
+        period_end = snapshot.get("currentPeriodEnd") or (now + timedelta(days=30))
+
+        topup_buckets = snapshot.get("topupCreditBuckets", {})
+        for b_key, b_count in item.bucket_breakdown.items():
+            prev = topup_buckets.get(b_key, {"total": 0, "used": 0, "remaining": 0})
+            topup_buckets[b_key] = {
+                "total": int(prev.get("total", 0)) + b_count,
+                "used": int(prev.get("used", 0)),
+                "remaining": int(prev.get("remaining", 0)) + b_count,
+            }
+
+        user_updates = {
+            "topupCreditBuckets": topup_buckets,
+            "paymentProvider": "razorpay",
+            "providerSubscriptionId": order_id,
+        }
+        product_type = "top_up"
+    else:
+        # Main Subscription Purchase
+        period_start = now
+        period_end = now + timedelta(days=item.valid_for_days or 30)
+
+        main_buckets = {}
+        zero_buckets = {
+            "10m": {"total": 0, "used": 0, "remaining": 0},
+            "15m": {"total": 0, "used": 0, "remaining": 0},
+            "30m": {"total": 0, "used": 0, "remaining": 0},
+        }
+        for b_key, b_count in item.bucket_breakdown.items():
+            main_buckets[b_key] = {"total": b_count, "used": 0, "remaining": b_count}
+
+        user_updates = {
+            "planKey": item.key,
+            "plan": item.plan_group,
+            "billingStatus": "active",
+            "currentPeriodStart": period_start,
+            "currentPeriodEnd": period_end,
+            "mainCreditBuckets": main_buckets,
+            "topupCreditBuckets": zero_buckets,
+            "paymentProvider": "razorpay",
+            "providerSubscriptionId": order_id,
+            "cancelAtPeriodEnd": False,
+        }
+        product_type = "main_plan"
 
     await database.users.update_one({"id": user["id"]}, {"$set": user_updates})
 
@@ -444,6 +643,7 @@ async def verify_razorpay_payment(user: dict, order_id: str, payment_id: str, si
         "userId": user["id"],
         "userEmail": user["email"],
         "userName": user["name"],
+        "productType": product_type,
         "planKey": item.key,
         "planName": item.display_name,
         "amount": subtotal,
@@ -456,6 +656,7 @@ async def verify_razorpay_payment(user: dict, order_id: str, payment_id: str, si
         "transactionRef": payment_id,
         "subscriptionStart": period_start,
         "subscriptionEnd": period_end,
+        "validUntil": period_end,
         "createdAt": now,
     }
     await database.payments.insert_one(payment_doc)
@@ -467,9 +668,11 @@ async def verify_razorpay_payment(user: dict, order_id: str, payment_id: str, si
         "userId": user["id"],
         "paymentId": payment_doc["id"],
         "planName": item.display_name,
+        "productType": product_type,
         "subtotal": subtotal,
         "gstAmount": gst_amount,
         "totalAmount": total_amount,
+        "validUntil": period_end,
         "createdAt": now,
     }
     await database.invoices.insert_one(invoice_doc)
@@ -477,10 +680,11 @@ async def verify_razorpay_payment(user: dict, order_id: str, payment_id: str, si
     # Log to CreditLedger
     ledger_doc = {
         "userId": user["id"],
-        "event": "subscription_activated",
+        "event": "topup_activated" if item.purchase_type == "addon" else "subscription_activated",
         "planKey": item.key,
+        "productType": product_type,
         "allocatedBuckets": item.bucket_breakdown,
-        "totalAllocated": total_new_credits,
+        "validUntil": period_end,
         "createdAt": now,
     }
     await database.credit_ledger.insert_one(ledger_doc)
@@ -489,7 +693,7 @@ async def verify_razorpay_payment(user: dict, order_id: str, payment_id: str, si
     audit_doc = {
         "userId": user["id"],
         "action": "payment_verified",
-        "details": {"orderId": order_id, "paymentId": payment_id, "amount": total_amount},
+        "details": {"orderId": order_id, "paymentId": payment_id, "amount": total_amount, "productType": product_type},
         "createdAt": now,
     }
     await database.audit_logs.insert_one(audit_doc)
@@ -497,7 +701,7 @@ async def verify_razorpay_payment(user: dict, order_id: str, payment_id: str, si
     payment_doc.pop("_id", None)
     return {
         "success": True,
-        "message": f"Successfully subscribed to {item.display_name}!",
+        "message": f"Successfully activated {item.display_name}!",
         "payment": payment_doc,
         "invoiceNumber": invoice_number,
     }
@@ -506,7 +710,7 @@ async def verify_razorpay_payment(user: dict, order_id: str, payment_id: str, si
 async def get_user_payment_history(user_id: str) -> List[dict]:
     payments = await database.payments.find({"userId": user_id}, {"_id": 0}).sort("createdAt", -1).to_list(100)
     for p in payments:
-        for k in ("createdAt", "subscriptionStart", "subscriptionEnd"):
+        for k in ("createdAt", "subscriptionStart", "subscriptionEnd", "validUntil"):
             if p.get(k) and isinstance(p[k], datetime):
                 p[k] = p[k].isoformat()
     return payments
@@ -530,22 +734,17 @@ async def ensure_interview_access(user: dict, duration_minutes: int) -> tuple[di
             detail="Your subscription has expired or credits are exhausted. Please upgrade to continue.",
         )
 
-    # 2. Check duration bucket
-    buckets = user.get("creditBuckets") or {}
+    # 2. Check duration bucket with strict duration matching
     bucket_key = "10m" if duration_minutes <= 10 else ("15m" if duration_minutes <= 15 else "30m")
 
-    bucket = buckets.get(bucket_key, {"remaining": 0})
-    if bucket.get("remaining", 0) <= 0:
-        # Fallback to next higher duration bucket if available
-        if bucket_key == "10m" and buckets.get("15m", {}).get("remaining", 0) > 0:
-            bucket_key = "15m"
-        elif bucket_key in {"10m", "15m"} and buckets.get("30m", {}).get("remaining", 0) > 0:
-            bucket_key = "30m"
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"No credits available for {duration_minutes}-minute interviews on your current plan. Please upgrade.",
-            )
+    main_b = (user.get("mainCreditBuckets") or {}).get(bucket_key, {"remaining": 0})
+    topup_b = (user.get("topupCreditBuckets") or {}).get(bucket_key, {"remaining": 0})
+
+    if main_b.get("remaining", 0) <= 0 and topup_b.get("remaining", 0) <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"No credits available for {duration_minutes}-minute interviews on your current plan. Please recharge or upgrade.",
+        )
 
     # 3. Clean up any stale active sessions for this user so starting a new interview works seamlessly
     active_interview = await database.interviews.find_one({"userId": user["id"], "status": "active"})
@@ -557,7 +756,6 @@ async def ensure_interview_access(user: dict, duration_minutes: int) -> tuple[di
         )
 
     return user, bucket_key
-
 
 
 async def consume_credit_for_interview(user_id: str, interview_id: str, duration_minutes: int, elapsed_seconds: float) -> dict:
@@ -574,34 +772,45 @@ async def consume_credit_for_interview(user_id: str, interview_id: str, duration
     if not user:
         return {"deducted": False, "reason": "user_not_found"}
 
-    buckets = user.get("creditBuckets", {})
-    target_bucket = buckets.get(bucket_key, {})
-    if target_bucket.get("remaining", 0) <= 0:
-        # fallback to higher available bucket
-        for alt in ("10m", "15m", "30m"):
-            if buckets.get(alt, {}).get("remaining", 0) > 0:
-                bucket_key = alt
-                break
+    user = normalize_user_billing_document(user)
+    main_b = user.get("mainCreditBuckets", {}).get(bucket_key, {})
+    topup_b = user.get("topupCreditBuckets", {}).get(bucket_key, {})
 
     now = _now()
-    # Atomic MongoDB update
-    update_result = await database.users.update_one(
-        {"id": user_id, f"creditBuckets.{bucket_key}.remaining": {"$gt": 0}},
-        {
-            "$inc": {
-                f"creditBuckets.{bucket_key}.used": 1,
-                f"creditBuckets.{bucket_key}.remaining": -1,
-                "creditsUsed": 1,
-                "creditsRemaining": -1,
+
+    # Priority: Consume MAIN PLAN credit first!
+    if main_b.get("remaining", 0) > 0:
+        update_result = await database.users.update_one(
+            {"id": user_id, f"mainCreditBuckets.{bucket_key}.remaining": {"$gt": 0}},
+            {
+                "$inc": {
+                    f"mainCreditBuckets.{bucket_key}.used": 1,
+                    f"mainCreditBuckets.{bucket_key}.remaining": -1,
+                },
+                "$set": {"trialUsed": True},
             },
-            "$set": {
-                "trialUsed": True,
+        )
+        credit_source = "main"
+    elif topup_b.get("remaining", 0) > 0:
+        update_result = await database.users.update_one(
+            {"id": user_id, f"topupCreditBuckets.{bucket_key}.remaining": {"$gt": 0}},
+            {
+                "$inc": {
+                    f"topupCreditBuckets.{bucket_key}.used": 1,
+                    f"topupCreditBuckets.{bucket_key}.remaining": -1,
+                },
+                "$set": {"trialUsed": True},
             },
-        },
-    )
+        )
+        credit_source = "topup"
+    else:
+        return {"deducted": False, "reason": "no_credit_available"}
 
     if update_result.modified_count == 1:
-        await database.interviews.update_one({"id": interview_id}, {"$set": {"creditDeducted": True, "deductedBucket": bucket_key, "deductedAt": now}})
+        await database.interviews.update_one(
+            {"id": interview_id},
+            {"$set": {"creditDeducted": True, "deductedBucket": bucket_key, "creditSource": credit_source, "deductedAt": now}}
+        )
         await database.credit_ledger.insert_one(
             {
                 "ledgerId": f"ldg_{now.strftime('%Y%m%d%H%M%S%f')}",
@@ -610,11 +819,12 @@ async def consume_credit_for_interview(user_id: str, interview_id: str, duration
                 "interviewId": interview_id,
                 "event": "credit_consumed",
                 "bucket": bucket_key,
+                "source": credit_source,
                 "elapsedSeconds": elapsed_seconds,
                 "createdAt": now,
             }
         )
-        return {"deducted": True, "bucket": bucket_key, "elapsed_seconds": elapsed_seconds}
+        return {"deducted": True, "bucket": bucket_key, "source": credit_source, "elapsed_seconds": elapsed_seconds}
 
     return {"deducted": False, "reason": "no_credit_available_or_race"}
 
@@ -633,7 +843,7 @@ async def get_admin_payments(status_filter: Optional[str] = None, search: Option
         ]
     payments = await database.payments.find(query, {"_id": 0}).sort("createdAt", -1).to_list(200)
     for p in payments:
-        for k in ("createdAt", "subscriptionStart", "subscriptionEnd"):
+        for k in ("createdAt", "subscriptionStart", "subscriptionEnd", "validUntil"):
             if p.get(k) and isinstance(p[k], datetime):
                 p[k] = p[k].isoformat()
     return payments
@@ -663,7 +873,7 @@ async def export_admin_payments_csv() -> StreamingResponse:
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Invoice Number", "User Name", "User Email", "Plan Name", "Amount (INR)", "GST Amount", "Total Paid", "Status", "Payment Method", "Transaction ID", "Date"])
+    writer.writerow(["Invoice Number", "User Name", "User Email", "Plan Name", "Product Type", "Amount (INR)", "GST Amount", "Total Paid", "Status", "Payment Method", "Transaction ID", "Date"])
 
     for p in payments:
         created = p.get("createdAt")
@@ -673,6 +883,7 @@ async def export_admin_payments_csv() -> StreamingResponse:
             p.get("userName", ""),
             p.get("userEmail", ""),
             p.get("planName", ""),
+            p.get("productType", "main_plan"),
             p.get("amount", 0),
             p.get("gstAmount", 0),
             p.get("totalAmount", 0),

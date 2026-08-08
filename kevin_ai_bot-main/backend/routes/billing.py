@@ -31,6 +31,12 @@ async def subscription(user=Depends(get_current_user)):
     return await get_user_billing_snapshot(user)
 
 
+@router.get("/topup-eligibility")
+async def topup_eligibility(user=Depends(get_current_user)):
+    from services.billing_service import check_topup_eligibility
+    return check_topup_eligibility(user)
+
+
 @router.post("/create-order")
 async def create_order(payload: CheckoutRequest, user=Depends(get_current_user)):
     return await create_razorpay_order(payload.itemKey, user)

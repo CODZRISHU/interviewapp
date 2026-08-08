@@ -25,6 +25,9 @@ class UserResponse(BaseModel):
     creditsUsed: int = 0
     creditsRemaining: int = 1
     creditBuckets: Dict[str, Dict[str, int]] = Field(default_factory=dict)
+    mainCreditBuckets: Dict[str, Dict[str, int]] = Field(default_factory=dict)
+    topupCreditBuckets: Dict[str, Dict[str, int]] = Field(default_factory=dict)
+    topupEligibility: Optional[Dict[str, Any]] = None
     trialUsed: bool = False
     bonusCreditsBalance: int = 0
     subscriptionEnd: Optional[datetime] = None
