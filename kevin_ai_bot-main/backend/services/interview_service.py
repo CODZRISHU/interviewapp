@@ -216,6 +216,7 @@ async def finish_interview(user: dict, interview_id: str) -> dict:
             "verdict": "Incomplete",
             "summary": "Interview ended before enough meaningful responses were captured to evaluate performance.",
             "config": interview["config"],
+            "messages": messages,
             "createdAt": now,
         }
     else:
@@ -239,6 +240,7 @@ async def finish_interview(user: dict, interview_id: str) -> dict:
             "verdict": evaluation.get("verdict", "Needs Improvement"),
             "summary": evaluation.get("summary", ""),
             "config": interview["config"],
+            "messages": messages,
             "createdAt": now,
         }
 

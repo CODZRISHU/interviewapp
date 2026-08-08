@@ -17,4 +17,10 @@ async def get_report(report_id: str, user=Depends(get_current_user)):
     report = await database.reports.find_one({"id": report_id, "userId": user["id"]}, {"_id": 0})
     if not report:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found.")
+
+    if "messages" not in report and report.get("interviewId"):
+        interview = await database.interviews.find_one({"id": report["interviewId"]}, {"_id": 0})
+        if interview:
+            report["messages"] = interview.get("messages", [])
+
     return report
