@@ -10,6 +10,10 @@ const maxVal = (val, fallback) => (val && val > 0 ? val : fallback);
 export default function Dashboard() {
 
   const { user, checkAuth } = useAuth();
+  const creditBuckets = user?.creditBuckets ?? user?.entitlements?.creditBuckets ?? {};
+  const tenMinBucket = creditBuckets["10m"] ?? {};
+  const fifteenMinBucket = creditBuckets["15m"] ?? {};
+  const thirtyMinBucket = creditBuckets["30m"] ?? {};
   const navigate = useNavigate();
   const [reports, setReports] = useState([]);
   const [loadingReports, setLoadingReports] = useState(true);
@@ -119,7 +123,7 @@ export default function Dashboard() {
                 <div className="flex justify-between text-xs text-gray-400 mb-1.5">
                   <span>10 Min Bucket</span>
                   <span className="font-semibold text-white">
-                    {user?.creditBuckets?.["10m"]?.remaining ?? (user?.creditsRemaining || 0)} Remaining
+                    {tenMinBucket?.remaining ?? (user?.creditsRemaining || 0)} Remaining
                   </span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
@@ -127,8 +131,8 @@ export default function Dashboard() {
                     className="h-full bg-blue-500 transition-all duration-500"
                     style={{
                       width: `${Math.min(
-                        ((user?.creditBuckets?.["10m"]?.remaining ?? 1) /
-                          maxVal(user?.creditBuckets?.["10m"]?.total, 1)) *
+                        ((tenMinBucket?.remaining ?? (user?.creditsRemaining || 0)) /
+                          maxVal(tenMinBucket?.total, maxVal(user?.totalCredits, 1))) *
                           100,
                         100
                       )}%`,
@@ -141,7 +145,7 @@ export default function Dashboard() {
                 <div className="flex justify-between text-xs text-gray-400 mb-1.5">
                   <span>15 Min Bucket</span>
                   <span className="font-semibold text-white">
-                    {user?.creditBuckets?.["15m"]?.remaining ?? 0} Remaining
+                    {fifteenMinBucket?.remaining ?? 0} Remaining
                   </span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
@@ -149,8 +153,8 @@ export default function Dashboard() {
                     className="h-full bg-purple-500 transition-all duration-500"
                     style={{
                       width: `${Math.min(
-                        ((user?.creditBuckets?.["15m"]?.remaining ?? 0) /
-                          maxVal(user?.creditBuckets?.["15m"]?.total, 1)) *
+                        ((fifteenMinBucket?.remaining ?? 0) /
+                          maxVal(fifteenMinBucket?.total, 1)) *
                           100,
                         100
                       )}%`,
@@ -163,7 +167,7 @@ export default function Dashboard() {
                 <div className="flex justify-between text-xs text-gray-400 mb-1.5">
                   <span>30 Min Bucket</span>
                   <span className="font-semibold text-white">
-                    {user?.creditBuckets?.["30m"]?.remaining ?? 0} Remaining
+                    {thirtyMinBucket?.remaining ?? 0} Remaining
                   </span>
                 </div>
                 <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
@@ -171,8 +175,8 @@ export default function Dashboard() {
                     className="h-full bg-amber-500 transition-all duration-500"
                     style={{
                       width: `${Math.min(
-                        ((user?.creditBuckets?.["30m"]?.remaining ?? 0) /
-                          maxVal(user?.creditBuckets?.["30m"]?.total, 1)) *
+                        ((thirtyMinBucket?.remaining ?? 0) /
+                          maxVal(thirtyMinBucket?.total, 1)) *
                           100,
                         100
                       )}%`,

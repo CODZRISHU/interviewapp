@@ -574,7 +574,8 @@ async def consume_credit_for_interview(user_id: str, interview_id: str, duration
     target_bucket = buckets.get(bucket_key, {})
     if target_bucket.get("remaining", 0) <= 0:
         # fallback to higher available bucket
-        for alt in ("10m", "15m", "30m"):
+        fallback_order = ("15m", "30m") if bucket_key == "10m" else (("30m",) if bucket_key == "15m" else ())
+        for alt in fallback_order:
             if buckets.get(alt, {}).get("remaining", 0) > 0:
                 bucket_key = alt
                 break
