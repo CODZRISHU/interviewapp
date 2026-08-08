@@ -283,6 +283,14 @@ export default function InterviewPage() {
 
   const handleKeyDown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
 
+  const captionEndRef = useRef(null);
+
+  useEffect(() => {
+    if (liveTranscript && captionEndRef.current) {
+      captionEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [liveTranscript]);
+
   const sectionMeta = SECTION_META[currentSection] || SECTION_META.introduction;
   const glowGradient = SECTION_GLOW[currentSection] || SECTION_GLOW.introduction;
 
@@ -290,7 +298,7 @@ export default function InterviewPage() {
     <div className="flex flex-col h-screen bg-[#050505] text-white overflow-hidden select-none font-sans" data-testid="interview-page">
       {/* Top Header Bar */}
       <header className="shrink-0 z-20 bg-[#0A0A0A]/95 backdrop-blur-2xl border-b border-white/10 shadow-2xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
           
           {/* Left Metadata Pill */}
           <div className="flex items-center gap-3">
@@ -359,7 +367,7 @@ export default function InterviewPage() {
         </div>
 
         {/* Section Coverage Bar */}
-        <div className="hidden sm:flex items-center justify-center gap-4 sm:gap-8 px-4 py-2 border-b border-white/5 bg-[#050505] text-xs">
+        <div className="hidden sm:flex items-center justify-center gap-4 sm:gap-8 px-4 py-1.5 border-b border-white/5 bg-[#050505] text-xs">
           {Object.entries(coveredSections).map(([section, count]) => {
             const meta = SECTION_META[section] || SECTION_META.skills;
             const planned = interviewState?.question_plan?.distribution?.[section] || 0;
@@ -375,104 +383,109 @@ export default function InterviewPage() {
         </div>
       </header>
 
-      {/* Main Stage Room */}
-      <main className="flex-1 min-h-0 overflow-y-auto relative flex flex-col items-center justify-between p-4 sm:p-8">
+      {/* Main Stage Room (Fixed Height, No Page Overflow) */}
+      <main className="flex-1 min-h-0 overflow-hidden relative flex flex-col items-center justify-between p-3 sm:p-5">
         
         {/* Background Ambient Netflix Glow */}
-        <div className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] ${glowGradient} opacity-60 transition-all duration-1000`} />
+        <div className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] ${glowGradient} opacity-50 transition-all duration-1000`} />
 
-        {/* Kevin AI Avatar Stage */}
-        <div className="relative z-10 flex flex-col items-center justify-center my-auto w-full max-w-2xl space-y-6">
+        {/* Kevin AI Avatar Stage & Fixed Viewport Text Cards */}
+        <div className="relative z-10 flex flex-col items-center justify-center my-auto w-full max-w-2xl space-y-4 min-h-0 flex-1">
           
           {/* Pulsating Glowing Rings & Avatar */}
-          <div className="relative flex items-center justify-center my-4">
-            <div className={`absolute inset-[-50px] rounded-full blur-3xl transition-all duration-700 ${isSpeaking ? 'bg-red-600/30 scale-125 opacity-100' : 'bg-blue-600/15 scale-100 opacity-50'}`} />
-            <div className={`absolute inset-[-20px] rounded-full transition-all duration-500 border ${isSpeaking ? 'border-red-500/40 animate-ping-slow scale-110' : 'border-white/10 scale-100'}`} />
-            <div className={`absolute inset-[-10px] rounded-full border transition-all duration-300 ${isSpeaking ? 'border-red-500/60 animate-pulse' : 'border-white/10'}`} />
+          <div className="relative flex items-center justify-center shrink-0 my-2">
+            <div className={`absolute inset-[-40px] rounded-full blur-3xl transition-all duration-700 ${isSpeaking ? 'bg-red-600/30 scale-110 opacity-100' : 'bg-blue-600/15 scale-100 opacity-50'}`} />
+            <div className={`absolute inset-[-15px] rounded-full transition-all duration-500 border ${isSpeaking ? 'border-red-500/40 animate-ping-slow scale-105' : 'border-white/10 scale-100'}`} />
+            <div className={`absolute inset-[-8px] rounded-full border transition-all duration-300 ${isSpeaking ? 'border-red-500/60 animate-pulse' : 'border-white/10'}`} />
 
-            <div className={`w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-b from-gray-900 to-black border-2 flex items-center justify-center relative z-10 transition-all duration-500 shadow-2xl ${
-              isSpeaking ? 'border-red-500 shadow-[0_0_50px_rgba(229,9,20,0.4)] scale-105' : 'border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.8)]'
+            <div className={`w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-b from-gray-900 to-black border-2 flex items-center justify-center relative z-10 transition-all duration-500 shadow-2xl ${
+              isSpeaking ? 'border-red-500 shadow-[0_0_40px_rgba(229,9,20,0.4)] scale-105' : 'border-white/20 shadow-[0_0_30px_rgba(0,0,0,0.8)]'
             }`}>
-              <span className="text-white font-black text-4xl sm:text-5xl tracking-tighter" style={{ fontFamily: 'Outfit' }}>K</span>
+              <span className="text-white font-black text-3xl sm:text-4xl tracking-tighter" style={{ fontFamily: 'Outfit' }}>K</span>
             </div>
           </div>
 
           {/* AI Status Title */}
-          <div className="text-center">
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white" style={{ fontFamily: 'Outfit' }}>Kevin AI</h2>
-            <p className="text-xs sm:text-sm text-gray-400 mt-1 font-medium">
+          <div className="text-center shrink-0">
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white" style={{ fontFamily: 'Outfit' }}>Kevin AI</h2>
+            <p className="text-xs text-gray-400 mt-0.5 font-medium">
               {sending ? 'Thinking...' : isSpeaking ? 'Speaking...' : isRecording ? 'Listening to your answer...' : transcribing ? 'Transcribing...' : 'Waiting for your answer'}
             </p>
           </div>
 
-          {/* Spoken Question Text Box */}
-          {currentSpokenText && (
-            <div className="w-full bg-[#0A0A0A]/90 border border-white/10 rounded-2xl p-5 sm:p-6 backdrop-blur-xl shadow-2xl text-center transition-all duration-300">
-              <p className="text-sm sm:text-base text-gray-200 leading-relaxed font-normal">
-                "{currentSpokenText}"
-              </p>
-            </div>
-          )}
+          {/* Fixed Height Viewport for Question & Captions (Grows Inside Given Space) */}
+          <div className="w-full flex-1 max-h-[38vh] min-h-0 flex flex-col gap-3 justify-center items-center overflow-hidden">
+            
+            {/* Spoken Question Text Box (Scrollable inside max height) */}
+            {currentSpokenText && (
+              <div className="w-full max-h-[140px] overflow-y-auto bg-[#0A0A0A]/90 border border-white/10 rounded-2xl p-4 sm:p-5 backdrop-blur-xl shadow-2xl text-center custom-scrollbar shrink-0">
+                <p className="text-xs sm:text-sm text-gray-200 leading-relaxed font-normal">
+                  "{currentSpokenText}"
+                </p>
+              </div>
+            )}
 
-          {/* Live Captions & Error Messages */}
-          {(liveTranscript || voiceError || responseError) && (
-            <div className="w-full text-center space-y-2">
-              {liveTranscript && (
-                <div className="rounded-2xl border border-red-500/20 bg-red-950/20 px-5 py-3.5 backdrop-blur-md">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-red-400 mb-1">Live Caption</p>
-                  <p className="text-sm text-gray-200 leading-relaxed font-medium">{liveTranscript}</p>
-                </div>
-              )}
-              {voiceError && <p className="text-xs text-amber-400 bg-amber-950/30 border border-amber-500/20 py-2 px-4 rounded-xl">{voiceError}</p>}
-              {responseError && <p className="text-xs text-red-400 bg-red-950/30 border border-red-500/20 py-2 px-4 rounded-xl">{responseError}</p>}
-            </div>
-          )}
+            {/* Live Captions Box (Fixed Viewport, Auto-Scrolls with Text) */}
+            {(liveTranscript || voiceError || responseError) && (
+              <div className="w-full text-center shrink-0">
+                {liveTranscript && (
+                  <div className="max-h-[120px] overflow-y-auto rounded-2xl border border-red-500/30 bg-red-950/30 px-4 py-3 backdrop-blur-md shadow-xl text-left custom-scrollbar transition-all">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-red-400 mb-1 sticky top-0 bg-red-950/80 backdrop-blur-sm py-0.5">Live Caption</p>
+                    <p className="text-xs sm:text-sm text-gray-100 leading-relaxed font-medium whitespace-pre-wrap">{liveTranscript}</p>
+                    <div ref={captionEndRef} />
+                  </div>
+                )}
+                {voiceError && <p className="text-xs text-amber-400 bg-amber-950/30 border border-amber-500/20 py-2 px-4 rounded-xl mt-1">{voiceError}</p>}
+                {responseError && <p className="text-xs text-red-400 bg-red-950/30 border border-red-500/20 py-2 px-4 rounded-xl mt-1">{responseError}</p>}
+              </div>
+            )}
 
-          {/* Dynamic Voice Waveform Animation */}
-          {(isSpeaking || isRecording) && (
-            <div className="flex items-center justify-center gap-1.5 py-2" data-testid="voice-waveform">
-              {Array.from({ length: 24 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-1 rounded-full transition-all ${isRecording ? 'bg-red-500 shadow-[0_0_8px_#EF4444]' : 'bg-blue-400 shadow-[0_0_8px_#60A5FA]'}`}
-                  style={{
-                    height: `${Math.sin(i + Date.now()) * 14 + 16}px`,
-                    animation: `wave 0.7s ease-in-out ${i * 0.04}s infinite alternate`,
-                  }}
-                />
-              ))}
-            </div>
-          )}
+            {/* Dynamic Voice Waveform Animation */}
+            {(isSpeaking || isRecording) && (
+              <div className="flex items-center justify-center gap-1.5 py-1 shrink-0" data-testid="voice-waveform">
+                {Array.from({ length: 24 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-1 rounded-full transition-all ${isRecording ? 'bg-red-500 shadow-[0_0_8px_#EF4444]' : 'bg-blue-400 shadow-[0_0_8px_#60A5FA]'}`}
+                    style={{
+                      height: `${Math.sin(i + Date.now()) * 12 + 14}px`,
+                      animation: `wave 0.7s ease-in-out ${i * 0.04}s infinite alternate`,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Bottom Interaction Control Panel */}
-        <div className="relative z-10 w-full max-w-xl flex flex-col items-center gap-4 mt-auto">
+        {/* Bottom Control Panel (Always Fixed at Bottom) */}
+        <div className="relative z-10 w-full max-w-xl flex flex-col items-center gap-3 shrink-0 mt-auto pt-2">
           
-          {/* Main Glowing Mic Button */}
-          <div className="flex flex-col items-center gap-2">
+          {/* Main Mic Button */}
+          <div className="flex flex-col items-center gap-1.5">
             <button
               data-testid="voice-input-btn"
               onClick={isRecording ? stopRecording : startRecording}
               disabled={sending || ending || transcribing}
-              className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl ${
+              className={`relative w-16 h-16 sm:w-18 sm:h-18 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl ${
                 isRecording
-                  ? 'bg-red-600 text-white scale-110 shadow-[0_0_50px_rgba(229,9,20,0.6)]'
+                  ? 'bg-red-600 text-white scale-110 shadow-[0_0_40px_rgba(229,9,20,0.6)]'
                   : transcribing
                   ? 'bg-white/10 text-gray-400'
-                  : 'bg-white text-black hover:bg-gray-200 hover:scale-105 shadow-[0_0_35px_rgba(255,255,255,0.2)]'
+                  : 'bg-white text-black hover:bg-gray-200 hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.2)]'
               } disabled:opacity-40`}
             >
               {transcribing ? (
-                <Loader2 className="w-8 h-8 animate-spin" />
+                <Loader2 className="w-7 h-7 animate-spin" />
               ) : isRecording ? (
-                <MicOff className="w-8 h-8" />
+                <MicOff className="w-7 h-7" />
               ) : (
-                <Mic className="w-8 h-8" />
+                <Mic className="w-7 h-7" />
               )}
               {isRecording && <span className="absolute inset-0 rounded-full border-2 border-red-500 animate-ping opacity-60" />}
             </button>
 
-            <span className="text-xs text-gray-400 font-medium">
+            <span className="text-[11px] text-gray-400 font-medium">
               {isRecording
                 ? 'Tap to finish & submit answer'
                 : transcribing
@@ -485,14 +498,14 @@ export default function InterviewPage() {
 
           {/* Text Input Box */}
           <div className="w-full">
-            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl flex items-center px-4 py-3 gap-3 focus-within:border-white/30 transition-all shadow-xl">
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl flex items-center px-4 py-2.5 gap-3 focus-within:border-white/30 transition-all shadow-xl">
               <input
                 data-testid="interview-input"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Or type your detailed answer here..."
-                className="flex-1 bg-transparent text-sm text-white placeholder:text-gray-500 outline-none"
+                className="flex-1 bg-transparent text-xs sm:text-sm text-white placeholder:text-gray-500 outline-none"
                 disabled={sending || ending}
               />
               <button
@@ -501,7 +514,7 @@ export default function InterviewPage() {
                 disabled={!input.trim() || sending || ending}
                 className="p-2 rounded-xl bg-red-600 text-white hover:bg-red-500 transition-all disabled:opacity-20 shadow-md shadow-red-600/20"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
