@@ -61,9 +61,19 @@ def _send_otp_email_smtp(recipient_email: str, otp_code: str) -> bool:
 
 async def request_otp_for_email(email: str) -> Dict[str, Optional[str]]:
     email_clean = email.lower().strip()
+
+    # Check if user already registered
+    existing_user = await database.users.find_one({"email": email_clean})
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists. Please switch to Login and sign in.",
+        )
+
     now = utc_now()
 
     # Rate limiting: max 3 requests in 15 minutes
+
     fifteen_mins_ago = now - timedelta(minutes=15)
     recent_count = await database.otp_verifications.count_documents({
         "email": email_clean,
