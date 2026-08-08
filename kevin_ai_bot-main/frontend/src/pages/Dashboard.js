@@ -112,107 +112,113 @@ export default function Dashboard() {
       )}
 
       {/* Credit Buckets Card */}
-      <div className="netflix-card rounded-3xl p-6 md:p-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-[#E50914]/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative z-10">
-          <div className="space-y-4 flex-1">
-            <div className="flex items-center gap-3">
-              <CreditCard className="w-5 h-5 text-[#E50914]" />
-              <h2 className="text-xl font-bold text-white" style={{ fontFamily: 'Outfit' }}>
-                Active Plan & Credit Balances
-              </h2>
-              <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider ${
-                user?.planKey === "premium_199" ? "bg-amber-500/20 border border-amber-500/40 text-amber-300" :
-                user?.planKey === "basic_99" ? "bg-blue-500/20 border border-blue-500/40 text-blue-300" : "bg-gray-500/20 border border-gray-500/40 text-gray-300"
-              }`}>
-                {user?.planKey === "premium_199" ? "Premium Plan (₹199)" :
-                 user?.planKey === "basic_99" ? "Basic Plan (₹99)" : "Free Trial"}
-              </span>
-            </div>
+      {(() => {
+        const buckets = user?.entitlements?.creditBuckets || user?.creditBuckets || {};
+        const b10 = buckets["10m"] || {};
+        const b15 = buckets["15m"] || {};
+        const b30 = buckets["30m"] || {};
 
-            {/* Credit Progress Bars */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
-                <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
-                  <span>10-Minute Interviews</span>
-                  <span className="font-bold text-white">
-                    {user?.creditBuckets?.["10m"]?.remaining ?? (user?.creditsRemaining || 0)} Left
+        return (
+          <div className="netflix-card rounded-3xl p-6 md:p-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-[#E50914]/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative z-10">
+              <div className="space-y-4 flex-1">
+                <div className="flex items-center gap-3">
+                  <CreditCard className="w-5 h-5 text-[#E50914]" />
+                  <h2 className="text-xl font-bold text-white" style={{ fontFamily: 'Outfit' }}>
+                    Active Plan & Credit Balances
+                  </h2>
+                  <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider ${
+                    user?.planKey === "premium_199" ? "bg-amber-500/20 border border-amber-500/40 text-amber-300" :
+                    user?.planKey === "basic_99" ? "bg-blue-500/20 border border-blue-500/40 text-blue-300" : "bg-gray-500/20 border border-gray-500/40 text-gray-300"
+                  }`}>
+                    {user?.planKey === "premium_199" ? "Premium Plan (₹199)" :
+                     user?.planKey === "basic_99" ? "Basic Plan (₹99)" : "Free Trial"}
                   </span>
                 </div>
-                <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-red-600 to-[#E50914] transition-all duration-500"
-                    style={{
-                      width: `${Math.min(
-                        ((user?.creditBuckets?.["10m"]?.remaining ?? 1) /
-                          maxVal(user?.creditBuckets?.["10m"]?.total, 1)) * 100,
-                        100
-                      )}%`,
-                    }}
-                  />
+
+                {/* Credit Progress Bars */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
+                    <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
+                      <span>10-Minute Interviews</span>
+                      <span className="font-bold text-white">
+                        {b10.remaining ?? (user?.creditsRemaining || 0)} Left
+                      </span>
+                    </div>
+                    <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-red-600 to-[#E50914] transition-all duration-500"
+                        style={{
+                          width: `${Math.min(
+                            ((b10.remaining ?? 1) / maxVal(b10.total, 1)) * 100,
+                            100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
+                    <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
+                      <span>15-Minute Interviews</span>
+                      <span className="font-bold text-white">
+                        {b15.remaining ?? 0} Left
+                      </span>
+                    </div>
+                    <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-purple-600 to-indigo-500 transition-all duration-500"
+                        style={{
+                          width: `${Math.min(
+                            ((b15.remaining ?? 0) / maxVal(b15.total, 1)) * 100,
+                            100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
+                    <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
+                      <span>30-Minute Interviews</span>
+                      <span className="font-bold text-white">
+                        {b30.remaining ?? 0} Left
+                      </span>
+                    </div>
+                    <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-500"
+                        style={{
+                          width: `${Math.min(
+                            ((b30.remaining ?? 0) / maxVal(b30.total, 1)) * 100,
+                            100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
-                <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
-                  <span>15-Minute Interviews</span>
-                  <span className="font-bold text-white">
-                    {user?.creditBuckets?.["15m"]?.remaining ?? 0} Left
-                  </span>
-                </div>
-                <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-purple-600 to-indigo-500 transition-all duration-500"
-                    style={{
-                      width: `${Math.min(
-                        ((user?.creditBuckets?.["15m"]?.remaining ?? 0) /
-                          maxVal(user?.creditBuckets?.["15m"]?.total, 1)) * 100,
-                        100
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
-                <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
-                  <span>30-Minute Interviews</span>
-                  <span className="font-bold text-white">
-                    {user?.creditBuckets?.["30m"]?.remaining ?? 0} Left
-                  </span>
-                </div>
-                <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-500"
-                    style={{
-                      width: `${Math.min(
-                        ((user?.creditBuckets?.["30m"]?.remaining ?? 0) /
-                          maxVal(user?.creditBuckets?.["30m"]?.total, 1)) * 100,
-                        100
-                      )}%`,
-                    }}
-                  />
-                </div>
+              <div className="flex flex-col gap-3 shrink-0">
+                <button
+                  onClick={() => navigate('/subscription')}
+                  className="netflix-btn-red px-6 py-3 rounded-xl font-bold text-xs shadow-md text-center"
+                >
+                  {user?.planKey === "free_trial" ? "Upgrade Subscription" : "Manage Plan"}
+                </button>
+                <button
+                  onClick={() => navigate('/payments')}
+                  className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-medium text-xs border border-white/10 transition text-center"
+                >
+                  Billing & Invoices
+                </button>
               </div>
             </div>
           </div>
-
-          <div className="flex flex-col gap-3 shrink-0">
-            <button
-              onClick={() => navigate('/subscription')}
-              className="netflix-btn-red px-6 py-3 rounded-xl font-bold text-xs shadow-md text-center"
-            >
-              {user?.planKey === "free_trial" ? "Upgrade Subscription" : "Manage Plan"}
-            </button>
-            <button
-              onClick={() => navigate('/payments')}
-              className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-medium text-xs border border-white/10 transition text-center"
-            >
-              Billing & Invoices
-            </button>
-          </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Main Action Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
