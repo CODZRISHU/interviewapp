@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
-import { Check, Sparkles, Shield, Clock, Award, Flame, CreditCard, AlertCircle } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import { Check, Sparkles, Shield, Clock, Award, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -25,7 +24,6 @@ export default function SubscriptionPage() {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [purchasingPlan, setPurchasingPlan] = useState(null);
-  const [pendingMockOrder, setPendingMockOrder] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -63,7 +61,6 @@ export default function SubscriptionPage() {
       toast.error(err.response?.data?.detail || "Payment verification failed.");
     } finally {
       setPurchasingPlan(null);
-      setPendingMockOrder(null);
     }
   };
 
@@ -86,15 +83,15 @@ export default function SubscriptionPage() {
       const order = res.data;
 
       const options = {
-        key: order.keyId,
+        key: order.keyId || "rzp_test_SbTSWFTWLhZTa1",
         amount: order.amountPaise,
-        currency: order.currency,
+        currency: order.currency || "INR",
         name: "Kevin AI",
         description: `${order.planName} Subscription`,
-        order_id: order.orderId,
+        order_id: order.orderId?.startsWith("order_mock_") ? undefined : order.orderId,
         prefill: {
-          name: order.user?.name || user?.name,
-          email: order.user?.email || user?.email,
+          name: order.user?.name || user?.name || "",
+          email: order.user?.email || user?.email || "",
         },
         theme: {
           color: "#E50914",
@@ -115,14 +112,9 @@ export default function SubscriptionPage() {
         },
       };
 
-      if (order.orderId.startsWith("order_mock_")) {
-        // Dev Sandbox Mock Order (Keys not set or fallback)
-        setPendingMockOrder({ order, planKey, options });
-      } else {
-        // Real Razorpay Checkout Modal Window
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-      }
+      // Always launch the official Razorpay Checkout Modal Interface
+      const rzp = new window.Razorpay(options);
+      rzp.open();
     } catch (err) {
       toast.error(err.response?.data?.detail || "Unable to initiate checkout.");
       setPurchasingPlan(null);
@@ -319,52 +311,6 @@ export default function SubscriptionPage() {
           <p className="text-xs text-gray-400 mt-1">Download official PDF tax receipts immediately.</p>
         </div>
       </div>
-
-      {/* Dev Sandbox Mock Order Modal (When keys are not set) */}
-      <Dialog open={Boolean(pendingMockOrder)} onOpenChange={() => { setPendingMockOrder(null); setPurchasingPlan(null); }}>
-        <DialogContent className="netflix-glass border border-white/15 rounded-3xl max-w-md p-6">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-white flex items-center gap-2" style={{ fontFamily: "Outfit" }}>
-              <CreditCard className="w-5 h-5 text-[#E50914]" /> Razorpay Dev Sandbox
-            </DialogTitle>
-          </DialogHeader>
-          <div className="mt-4 space-y-4">
-            <div className="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-2 text-xs">
-              <div className="flex justify-between"><span className="text-gray-400">Order ID:</span> <span className="font-mono text-white">{pendingMockOrder?.order?.orderId}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Plan:</span> <span className="font-bold text-white">{pendingMockOrder?.order?.planName}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Amount:</span> <span className="font-extrabold text-emerald-400">₹{pendingMockOrder?.order?.amount}</span></div>
-            </div>
-
-            <p className="text-xs text-gray-400 leading-relaxed">
-              Razorpay API keys are in Test Mode. Click below to simulate completing this payment transaction.
-            </p>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={() => {
-                  if (pendingMockOrder) {
-                    verifyAndActivate(
-                      pendingMockOrder.order.orderId,
-                      `pay_sim_${Date.now()}`,
-                      "simulated_signature",
-                      pendingMockOrder.planKey
-                    );
-                  }
-                }}
-                className="netflix-btn-red flex-1 py-3 rounded-xl font-bold text-xs"
-              >
-                Complete Test Payment
-              </button>
-              <button
-                onClick={() => { setPendingMockOrder(null); setPurchasingPlan(null); }}
-                className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 font-bold text-xs"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
