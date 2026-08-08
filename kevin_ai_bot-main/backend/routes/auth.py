@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from controllers.dependencies import get_current_user
-from models.schemas import AuthResponse, GoogleAuthRequest, LoginRequest, OtpResponse, RefreshRequest, RegisterRequest, SendOtpRequest, TokenPair, UserResponse, VerifyOtpRequest
+from models.schemas import AuthResponse, GoogleAuthRequest, LoginRequest, RefreshRequest, RegisterRequest, TokenPair, UserResponse
 from services.auth_service import (
     authenticate_google,
     login_user,
@@ -11,27 +11,15 @@ from services.auth_service import (
     serialize_user,
 )
 from services.billing_service import get_user_billing_snapshot, reconcile_user_billing_state
-from services.otp_service import request_otp_for_email, verify_otp_for_email
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-
-@router.post("/send-otp", response_model=OtpResponse)
-async def send_otp(payload: SendOtpRequest):
-    return await request_otp_for_email(payload.email)
-
-
-@router.post("/verify-otp")
-async def verify_otp(payload: VerifyOtpRequest):
-    await verify_otp_for_email(payload.email, payload.otp)
-    return {"verified": True, "message": "OTP verified successfully."}
-
-
 @router.post("/register", response_model=AuthResponse)
 async def register(payload: RegisterRequest):
     return await register_user(payload)
+
 
 
 

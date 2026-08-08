@@ -123,21 +123,10 @@ async def register_user(payload: RegisterRequest) -> AuthResponse:
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account already exists for this email.")
 
-    from services.otp_service import is_email_verified_with_otp, verify_otp_for_email
-
-    if payload.otp:
-        await verify_otp_for_email(payload.email, payload.otp)
-    else:
-        verified = await is_email_verified_with_otp(payload.email)
-        if not verified:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email verification required. Please verify your email with the OTP sent to you."
-            )
-
     user_document = _new_user_document(payload.name, payload.email.lower(), hash_password(payload.password), "email")
     await database.users.insert_one(user_document)
     return await build_auth_response(user_document)
+
 
 
 
