@@ -6,6 +6,7 @@ from services.billing_service import (
     normalize_user_billing_document,
     reconcile_user_billing_state,
 )
+from services.auth_service import serialize_user
 
 
 def test_purchase_items_pricing_and_buckets():
@@ -51,6 +52,25 @@ def test_build_entitlements_free_user():
     assert entitlements["planKey"] == "free_trial"
 
 
+def test_serialize_user_includes_credit_buckets():
+    now = datetime.now(timezone.utc)
+    user_doc = {
+        "id": "usr_serialize_1",
+        "name": "Test User",
+        "email": "test@example.com",
+        "createdAt": now,
+        "creditBuckets": {
+            "10m": {"total": 7, "used": 1, "remaining": 6},
+            "15m": {"total": 3, "used": 1, "remaining": 2},
+            "30m": {"total": 1, "used": 0, "remaining": 1},
+        },
+    }
+    serialized = serialize_user(user_doc)
+    assert serialized.creditBuckets["10m"]["remaining"] == 6
+    assert serialized.creditBuckets["15m"]["remaining"] == 2
+    assert serialized.creditBuckets["30m"]["remaining"] == 1
+
+
 async def test_reconcile_expired_subscription():
     now = datetime.now(timezone.utc)
     expired_user = {
@@ -71,5 +91,6 @@ if __name__ == "__main__":
     test_purchase_items_pricing_and_buckets()
     test_normalize_user_billing_document()
     test_build_entitlements_free_user()
+    test_serialize_user_includes_credit_buckets()
     asyncio.run(test_reconcile_expired_subscription())
     print("ALL BACKEND BILLING TESTS PASSED SUCCESSFULLY!")

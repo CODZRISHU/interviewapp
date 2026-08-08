@@ -37,6 +37,7 @@ def serialize_user(document: dict) -> UserResponse:
         totalCredits=int(billing["totalCredits"]),
         creditsUsed=int(billing["creditsUsed"]),
         creditsRemaining=int(billing["creditsRemaining"]),
+        creditBuckets=billing["creditBuckets"],
         trialUsed=bool(billing["trialUsed"]),
         bonusCreditsBalance=int(billing["bonusCreditsBalance"]),
         subscriptionEnd=billing.get("currentPeriodEnd"),
