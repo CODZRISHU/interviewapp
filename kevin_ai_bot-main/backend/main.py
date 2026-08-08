@@ -65,6 +65,7 @@ async def health() -> dict:
     return {"status": "ok", "service": settings.app_name}
 
 
+
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(billing_router, prefix=settings.api_prefix)
 app.include_router(admin_router, prefix=settings.api_prefix)
