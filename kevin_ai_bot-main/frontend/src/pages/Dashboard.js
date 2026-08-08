@@ -1,14 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Play, Upload, FileText, BarChart3, Clock, ChevronRight, UserCircle2 } from 'lucide-react';
+import { Play, Upload, FileText, BarChart3, Clock, ChevronRight, Sparkles, CreditCard, Award, ShieldAlert } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { api } from '../services/api';
 
 const maxVal = (val, fallback) => (val && val > 0 ? val : fallback);
 
 export default function Dashboard() {
-
   const { user, checkAuth } = useAuth();
   const navigate = useNavigate();
   const [reports, setReports] = useState([]);
@@ -65,252 +64,277 @@ export default function Dashboard() {
   };
 
   const getScoreColor = (score) => {
-    if (score >= 8) return 'text-green-400';
-    if (score >= 6) return 'text-yellow-400';
+    if (score >= 8) return 'text-emerald-400';
+    if (score >= 6) return 'text-amber-400';
     return 'text-red-400';
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto" data-testid="dashboard-page">
-      <div className="mb-10">
-        <h1 className="text-3xl sm:text-4xl font-light tracking-tighter mb-2" style={{ fontFamily: 'Outfit' }}>
-          Welcome back, <span className="font-medium">{user?.name?.split(' ')[0] || 'there'}</span>
-        </h1>
-        <p className="text-gray-500 text-sm">Upload your resume, practice interviews, and review your reports.</p>
-      </div>
-
-        {/* Subscription Alert Banners */}
-        {user?.billingStatus === "expired" && (
-          <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-sm font-medium">Your subscription has expired. Please recharge to continue interviews.</span>
-            </div>
-            <button
-              onClick={() => navigate('/subscription')}
-              className="px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition"
-            >
-              Recharge Now
-            </button>
+    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-10" data-testid="dashboard-page">
+      {/* Welcome Banner */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-white/10">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E50914]/10 border border-[#E50914]/30 mb-3">
+            <Sparkles className="w-3.5 h-3.5 text-[#E50914]" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-gray-200">Candidate Portal</span>
           </div>
-        )}
-
-        {/* Subscription Overview Widget */}
-        <div className="mb-8 p-6 rounded-[28px] border border-white/10 bg-[#0A0A0A] flex flex-col md:flex-row justify-between gap-6">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-xs uppercase tracking-[0.24em] text-gray-500">Current Subscription</span>
-              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase ${
-                user?.planKey === "premium_199" ? "bg-amber-500/20 text-amber-300" :
-                user?.planKey === "basic_99" ? "bg-blue-500/20 text-blue-300" : "bg-gray-500/20 text-gray-300"
-              }`}>
-                {user?.planKey === "premium_199" ? "Premium Plan (₹199)" :
-                 user?.planKey === "basic_99" ? "Basic Plan (₹99)" : "Free Plan"}
-              </span>
-            </div>
-
-            <h2 className="text-xl font-semibold mb-4" style={{ fontFamily: 'Outfit' }}>
-              Interview Credit Buckets
-            </h2>
-
-            {/* Credit Buckets Breakdown */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5">
-                <div className="flex justify-between text-xs text-gray-400 mb-1.5">
-                  <span>10 Min Bucket</span>
-                  <span className="font-semibold text-white">
-                    {user?.creditBuckets?.["10m"]?.remaining ?? (user?.creditsRemaining || 0)} Remaining
-                  </span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className="h-full bg-blue-500 transition-all duration-500"
-                    style={{
-                      width: `${Math.min(
-                        ((user?.creditBuckets?.["10m"]?.remaining ?? 1) /
-                          maxVal(user?.creditBuckets?.["10m"]?.total, 1)) *
-                          100,
-                        100
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5">
-                <div className="flex justify-between text-xs text-gray-400 mb-1.5">
-                  <span>15 Min Bucket</span>
-                  <span className="font-semibold text-white">
-                    {user?.creditBuckets?.["15m"]?.remaining ?? 0} Remaining
-                  </span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className="h-full bg-purple-500 transition-all duration-500"
-                    style={{
-                      width: `${Math.min(
-                        ((user?.creditBuckets?.["15m"]?.remaining ?? 0) /
-                          maxVal(user?.creditBuckets?.["15m"]?.total, 1)) *
-                          100,
-                        100
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5">
-                <div className="flex justify-between text-xs text-gray-400 mb-1.5">
-                  <span>30 Min Bucket</span>
-                  <span className="font-semibold text-white">
-                    {user?.creditBuckets?.["30m"]?.remaining ?? 0} Remaining
-                  </span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className="h-full bg-amber-500 transition-all duration-500"
-                    style={{
-                      width: `${Math.min(
-                        ((user?.creditBuckets?.["30m"]?.remaining ?? 0) /
-                          maxVal(user?.creditBuckets?.["30m"]?.total, 1)) *
-                          100,
-                        100
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Action CTAs */}
-          <div className="flex flex-col justify-center gap-3 shrink-0">
-            <button
-              onClick={() => navigate('/subscription')}
-              className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm transition shadow-lg shadow-blue-600/20 text-center"
-            >
-              {user?.planKey === "free_trial" ? "Upgrade Now" : "Manage Subscription"}
-            </button>
-            <button
-              onClick={() => navigate('/payments')}
-              className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-medium text-xs border border-white/5 transition text-center"
-            >
-              Payment History
-            </button>
-          </div>
+          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight" style={{ fontFamily: 'Outfit' }}>
+            Welcome back, <span className="text-[#E50914]">{user?.name?.split(' ')[0] || 'Interviewer'}</span>
+          </h1>
+          <p className="text-gray-400 text-sm md:text-base mt-2">
+            Configure your AI mock session, upload updated resumes, and review AI feedback scorecards.
+          </p>
         </div>
 
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
         <button
           data-testid="start-interview-btn"
           onClick={handleStartInterview}
-          className="bg-white text-black rounded-2xl p-6 text-left transition-all hover:shadow-[0_8px_32px_rgba(255,255,255,0.1)] hover:-translate-y-1"
+          className="netflix-btn-red px-8 py-4 rounded-2xl font-bold text-base flex items-center gap-3 shrink-0 shadow-[0_0_35px_rgba(229,9,20,0.4)]"
         >
-          <div className="w-10 h-10 rounded-xl bg-black/10 flex items-center justify-center mb-4">
-            <Play className="w-5 h-5" />
-          </div>
-          <h3 className="text-base font-medium mb-1" style={{ fontFamily: 'Outfit' }}>
-            Start Interview
-          </h3>
-          <p className="text-xs text-gray-600">Configure and begin a mock interview</p>
+          <Play className="w-5 h-5 fill-white" /> Start Mock Interview
         </button>
+      </div>
 
+      {/* Expired Subscription Banner */}
+      {user?.billingStatus === "expired" && (
+        <div className="p-5 rounded-2xl bg-[#E50914]/15 border border-[#E50914]/40 text-red-200 flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_30px_rgba(229,9,20,0.2)]">
+          <div className="flex items-center gap-3">
+            <ShieldAlert className="w-6 h-6 text-[#E50914] shrink-0 animate-bounce" />
+            <span className="text-sm font-medium">Your subscription has expired. Recharge credits to launch new interviews.</span>
+          </div>
+          <button
+            onClick={() => navigate('/subscription')}
+            className="netflix-btn-red px-5 py-2 rounded-xl text-xs font-bold shrink-0"
+          >
+            Recharge Now
+          </button>
+        </div>
+      )}
+
+      {/* Credit Buckets Card */}
+      <div className="netflix-card rounded-3xl p-6 md:p-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#E50914]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative z-10">
+          <div className="space-y-4 flex-1">
+            <div className="flex items-center gap-3">
+              <CreditCard className="w-5 h-5 text-[#E50914]" />
+              <h2 className="text-xl font-bold text-white" style={{ fontFamily: 'Outfit' }}>
+                Active Plan & Credit Balances
+              </h2>
+              <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider ${
+                user?.planKey === "premium_199" ? "bg-amber-500/20 border border-amber-500/40 text-amber-300" :
+                user?.planKey === "basic_99" ? "bg-blue-500/20 border border-blue-500/40 text-blue-300" : "bg-gray-500/20 border border-gray-500/40 text-gray-300"
+              }`}>
+                {user?.planKey === "premium_199" ? "Premium Plan (₹199)" :
+                 user?.planKey === "basic_99" ? "Basic Plan (₹99)" : "Free Trial"}
+              </span>
+            </div>
+
+            {/* Credit Progress Bars */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
+                <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
+                  <span>10-Minute Interviews</span>
+                  <span className="font-bold text-white">
+                    {user?.creditBuckets?.["10m"]?.remaining ?? (user?.creditsRemaining || 0)} Left
+                  </span>
+                </div>
+                <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-red-600 to-[#E50914] transition-all duration-500"
+                    style={{
+                      width: `${Math.min(
+                        ((user?.creditBuckets?.["10m"]?.remaining ?? 1) /
+                          maxVal(user?.creditBuckets?.["10m"]?.total, 1)) * 100,
+                        100
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
+                <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
+                  <span>15-Minute Interviews</span>
+                  <span className="font-bold text-white">
+                    {user?.creditBuckets?.["15m"]?.remaining ?? 0} Left
+                  </span>
+                </div>
+                <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-purple-600 to-indigo-500 transition-all duration-500"
+                    style={{
+                      width: `${Math.min(
+                        ((user?.creditBuckets?.["15m"]?.remaining ?? 0) /
+                          maxVal(user?.creditBuckets?.["15m"]?.total, 1)) * 100,
+                        100
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
+                <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
+                  <span>30-Minute Interviews</span>
+                  <span className="font-bold text-white">
+                    {user?.creditBuckets?.["30m"]?.remaining ?? 0} Left
+                  </span>
+                </div>
+                <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-500"
+                    style={{
+                      width: `${Math.min(
+                        ((user?.creditBuckets?.["30m"]?.remaining ?? 0) /
+                          maxVal(user?.creditBuckets?.["30m"]?.total, 1)) * 100,
+                        100
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 shrink-0">
+            <button
+              onClick={() => navigate('/subscription')}
+              className="netflix-btn-red px-6 py-3 rounded-xl font-bold text-xs shadow-md text-center"
+            >
+              {user?.planKey === "free_trial" ? "Upgrade Subscription" : "Manage Plan"}
+            </button>
+            <button
+              onClick={() => navigate('/payments')}
+              className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-medium text-xs border border-white/10 transition text-center"
+            >
+              Billing & Invoices
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Action Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <button
           data-testid="upload-resume-btn"
           onClick={() => setShowUpload(true)}
-          className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_8px_32px_rgba(255,255,255,0.04)]"
+          className="netflix-card rounded-3xl p-7 text-left group"
         >
-          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mb-4">
-            <Upload className="w-5 h-5 text-gray-400" />
+          <div className="w-12 h-12 rounded-2xl bg-[#E50914]/10 border border-[#E50914]/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+            <Upload className="w-6 h-6 text-[#E50914]" />
           </div>
-          <h3 className="text-base font-medium mb-1" style={{ fontFamily: 'Outfit' }}>Upload Resume</h3>
-          <p className="text-xs text-gray-500">
-            {user?.resumeFilename ? `Current: ${user.resumeFilename}` : 'Upload your PDF resume'}
+          <h3 className="text-lg font-bold mb-1 text-white" style={{ fontFamily: 'Outfit' }}>Resume Upload</h3>
+          <p className="text-xs text-gray-400 line-clamp-1">
+            {user?.resumeFilename ? `Uploaded: ${user.resumeFilename}` : 'Upload your PDF resume'}
           </p>
         </button>
 
         <button
           data-testid="view-reports-btn"
           onClick={() => navigate('/reports')}
-          className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-6 text-left transition-all hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_8px_32px_rgba(255,255,255,0.04)]"
+          className="netflix-card rounded-3xl p-7 text-left group"
         >
-          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mb-4">
-            <BarChart3 className="w-5 h-5 text-gray-400" />
+          <div className="w-12 h-12 rounded-2xl bg-[#E50914]/10 border border-[#E50914]/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+            <BarChart3 className="w-6 h-6 text-[#E50914]" />
           </div>
-          <h3 className="text-base font-medium mb-1" style={{ fontFamily: 'Outfit' }}>View Reports</h3>
-          <p className="text-xs text-gray-500">{reports.length} interview{reports.length !== 1 ? 's' : ''} completed</p>
+          <h3 className="text-lg font-bold mb-1 text-white" style={{ fontFamily: 'Outfit' }}>Evaluation Reports</h3>
+          <p className="text-xs text-gray-400">{reports.length} interview{reports.length !== 1 ? 's' : ''} completed</p>
+        </button>
+
+        <button
+          onClick={() => navigate('/profile')}
+          className="netflix-card rounded-3xl p-7 text-left group"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-[#E50914]/10 border border-[#E50914]/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+            <Award className="w-6 h-6 text-[#E50914]" />
+          </div>
+          <h3 className="text-lg font-bold mb-1 text-white" style={{ fontFamily: 'Outfit' }}>Profile & Resume Skills</h3>
+          <p className="text-xs text-gray-400">View extracted skills & experience</p>
         </button>
       </div>
 
-      {user?.resumeFilename && (
-        <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-5 mb-10 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
-            <FileText className="w-5 h-5 text-green-400" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium">Resume uploaded</p>
-            <p className="text-xs text-gray-500 truncate">{user.resumeFilename}</p>
-          </div>
+      {/* Recent Interview Evaluations */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight text-white" style={{ fontFamily: 'Outfit' }}>Recent Evaluations</h2>
+          {reports.length > 0 && (
+            <button onClick={() => navigate('/reports')} className="text-xs font-semibold text-[#E50914] hover:underline">
+              View All Reports →
+            </button>
+          )}
         </div>
-      )}
 
-      <div>
-        <h2 className="text-xl font-medium tracking-tight mb-4" style={{ fontFamily: 'Outfit' }}>Recent Reports</h2>
         {loadingReports ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+          <div className="flex items-center justify-center py-16">
+            <div className="w-8 h-8 border-2 border-[#E50914]/30 border-t-[#E50914] rounded-full animate-spin" />
           </div>
         ) : reports.length === 0 ? (
-          <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-12 text-center">
-            <BarChart3 className="w-8 h-8 text-gray-600 mx-auto mb-3" />
-            <p className="text-sm text-gray-500">No interviews yet. Start your first one!</p>
+          <div className="netflix-card rounded-3xl p-12 text-center">
+            <BarChart3 className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+            <p className="text-sm font-medium text-gray-400">No mock interviews completed yet.</p>
+            <p className="text-xs text-gray-500 mt-1">Start your first interview with Kevin AI above!</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-4">
             {reports.slice(0, 5).map(report => (
               <button
                 key={report.id}
                 data-testid={`report-card-${report.id}`}
                 onClick={() => navigate(`/reports/${report.id}`)}
-                className="w-full bg-[#0A0A0A] border border-white/5 rounded-2xl p-5 flex items-center gap-4 transition-all hover:border-white/15 hover:bg-[#0E0E0E] text-left"
+                className="netflix-card rounded-2xl p-6 flex items-center justify-between text-left group"
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className={`text-lg font-semibold ${getScoreColor(report.scores?.technical ?? 0)}`}>
+                <div className="flex items-center gap-5 min-w-0">
+                  <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center shrink-0">
+                    <span className={`text-base font-extrabold ${getScoreColor(report.scores?.technical ?? 0)}`}>
                       {(((report.scores?.technical ?? 0) + (report.scores?.communication ?? 0) + (report.scores?.confidence ?? 0) + (report.scores?.problem_solving ?? 0)) / 4).toFixed(1)}
                     </span>
-                    <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
-                      report.verdict === 'Hire' ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'
-                    }`}>
-                      {report.verdict}
-                    </span>
+                    <span className="text-[9px] uppercase tracking-wider text-gray-500">Score</span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Clock className="w-3 h-3" />
-                    {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-3 mb-1">
+                      <h4 className="text-base font-bold text-white truncate" style={{ fontFamily: 'Outfit' }}>
+                        {report.interviewConfig?.role || 'Software Engineer'} ({report.interviewConfig?.level || 'Fresher'})
+                      </h4>
+                      <span className={`text-xs px-3 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                        report.verdict === 'Hire' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                      }`}>
+                        {report.verdict}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-gray-500" />
+                        {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                      <span>•</span>
+                      <span className="capitalize text-gray-300">{report.interviewConfig?.interview_type || 'Mixed'} Mock</span>
+                    </div>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-600" />
+
+                <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-white group-hover:translate-x-1 transition-all" />
               </button>
             ))}
           </div>
         )}
       </div>
 
+      {/* Resume Upload Modal */}
       <Dialog open={showUpload} onOpenChange={setShowUpload}>
-        <DialogContent className="bg-[#0A0A0A] border border-white/10 rounded-2xl max-w-md" data-testid="upload-resume-modal">
+        <DialogContent className="netflix-glass border border-white/15 rounded-3xl max-w-md p-6" data-testid="upload-resume-modal">
           <DialogHeader>
-            <DialogTitle className="text-lg font-medium" style={{ fontFamily: 'Outfit' }}>Upload Resume</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-white" style={{ fontFamily: 'Outfit' }}>Upload Candidate Resume</DialogTitle>
           </DialogHeader>
-          <div className="mt-4">
+          <div className="mt-4 space-y-4">
             <label
               data-testid="resume-dropzone"
-              className="border-2 border-dashed border-white/10 rounded-2xl p-12 flex flex-col items-center justify-center hover:border-white/30 hover:bg-white/[0.02] transition-all cursor-pointer"
+              className="border-2 border-dashed border-white/15 rounded-2xl p-10 flex flex-col items-center justify-center hover:border-[#E50914]/50 hover:bg-[#E50914]/5 transition-all cursor-pointer group"
             >
-              <Upload className="w-8 h-8 text-gray-500 mb-3" />
-              <p className="text-sm text-gray-400 mb-1">Click to upload PDF</p>
-              <p className="text-xs text-gray-600">Max 25MB</p>
+              <Upload className="w-10 h-10 text-[#E50914] mb-3 group-hover:scale-110 transition-transform" />
+              <p className="text-sm font-semibold text-gray-200 mb-1">Click to select PDF resume</p>
+              <p className="text-xs text-gray-500">Supports PDF files up to 25MB</p>
               <input
                 type="file"
                 accept=".pdf"
@@ -320,20 +344,20 @@ export default function Dashboard() {
               />
             </label>
             {uploading && (
-              <div className="mt-4 flex items-center gap-3">
-                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                <p className="text-sm text-gray-400">Uploading and extracting text...</p>
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                <div className="w-4 h-4 border-2 border-[#E50914]/30 border-t-[#E50914] rounded-full animate-spin" />
+                <p className="text-xs text-gray-300 font-medium">Extracting resume skills & background...</p>
               </div>
             )}
             {uploadResult && !uploadResult.error && (
-              <div className="mt-4 bg-green-500/10 border border-green-500/20 rounded-xl p-4">
-                <p className="text-sm text-green-400 font-medium">Resume uploaded successfully!</p>
-                <p className="text-xs text-green-400/60 mt-1">{uploadResult.filename} - {uploadResult.text_length} characters extracted</p>
+              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                <p className="text-xs font-bold text-emerald-300">Resume uploaded successfully!</p>
+                <p className="text-[11px] text-emerald-200/70 mt-1">{uploadResult.filename} • {uploadResult.text_length} characters parsed</p>
               </div>
             )}
             {uploadResult?.error && (
-              <div className="mt-4 bg-red-500/10 border border-red-500/20 rounded-xl p-4">
-                <p className="text-sm text-red-400">{uploadResult.error}</p>
+              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+                <p className="text-xs text-red-300">{uploadResult.error}</p>
               </div>
             )}
           </div>

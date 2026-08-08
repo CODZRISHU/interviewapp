@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Clock, ChevronRight, TrendingUp } from 'lucide-react';
+import { BarChart3, Clock, ChevronRight, Award, Sparkles, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function ReportsPage() {
@@ -25,39 +25,47 @@ export default function ReportsPage() {
 
   const getAvgScore = (r) => (((r.scores?.technical ?? 0) + (r.scores?.communication ?? 0) + (r.scores?.confidence ?? 0) + (r.scores?.problem_solving ?? 0)) / 4).toFixed(1);
   const getScoreColor = (score) => {
-    if (score >= 8) return 'text-green-400';
-    if (score >= 6) return 'text-yellow-400';
+    if (score >= 8) return 'text-emerald-400';
+    if (score >= 6) return 'text-amber-400';
     return 'text-red-400';
   };
   const getScoreBg = (score) => {
-    if (score >= 8) return 'bg-green-500/10';
-    if (score >= 6) return 'bg-yellow-500/10';
-    return 'bg-red-500/10';
+    if (score >= 8) return 'bg-emerald-500/10 border-emerald-500/20';
+    if (score >= 6) return 'bg-amber-500/10 border-amber-500/20';
+    return 'bg-red-500/10 border-red-500/20';
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+      <div className="flex items-center justify-center h-full min-h-[400px]">
+        <div className="w-8 h-8 border-2 border-[#E50914]/30 border-t-[#E50914] rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto" data-testid="reports-page">
-      <div className="mb-8">
-        <h1 className="text-3xl font-light tracking-tighter mb-2" style={{ fontFamily: 'Outfit' }}>Interview Reports</h1>
-        <p className="text-sm text-gray-500">{reports.length} interview{reports.length !== 1 ? 's' : ''} completed</p>
+    <div className="p-6 md:p-10 max-w-6xl mx-auto space-y-8" data-testid="reports-page">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E50914]/10 border border-[#E50914]/30 mb-2">
+            <Sparkles className="w-3.5 h-3.5 text-[#E50914]" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-gray-200">Evaluation Archive</span>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white" style={{ fontFamily: 'Outfit' }}>
+            Interview Reports
+          </h1>
+          <p className="text-sm text-gray-400 mt-1">{reports.length} total mock interview evaluations archived</p>
+        </div>
       </div>
 
       {reports.length === 0 ? (
-        <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-16 text-center">
-          <BarChart3 className="w-10 h-10 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400 mb-2">No reports yet</p>
-          <p className="text-xs text-gray-600">Complete an interview to see your first report</p>
+        <div className="netflix-card rounded-3xl p-16 text-center">
+          <BarChart3 className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <p className="text-base font-bold text-white mb-1">No Evaluation Reports Yet</p>
+          <p className="text-xs text-gray-400">Complete an interview with Kevin AI to unlock your detailed report scorecard.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {reports.map((report, i) => {
             const avg = getAvgScore(report);
             return (
@@ -65,29 +73,42 @@ export default function ReportsPage() {
                 key={report.id}
                 data-testid={`report-item-${report.id}`}
                 onClick={() => navigate(`/reports/${report.id}`)}
-                className="w-full bg-[#0A0A0A] border border-white/5 rounded-2xl p-5 flex items-center gap-5 transition-all hover:border-white/15 hover:bg-[#0E0E0E] text-left group"
+                className="netflix-card rounded-2xl p-6 flex items-center justify-between gap-6 w-full text-left group"
               >
-                <div className={`w-14 h-14 rounded-2xl ${getScoreBg(avg)} flex flex-col items-center justify-center shrink-0`}>
-                  <span className={`text-lg font-bold ${getScoreColor(avg)}`}>{avg}</span>
-                  <span className="text-[8px] text-gray-500 uppercase">avg</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-sm font-medium">Interview #{reports.length - i}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                      report.verdict === 'Hire' ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'
-                    }`}>
-                      {report.verdict}
-                    </span>
+                <div className="flex items-center gap-5 min-w-0 flex-1">
+                  <div className={`w-16 h-16 rounded-2xl border ${getScoreBg(avg)} flex flex-col items-center justify-center shrink-0`}>
+                    <span className={`text-xl font-extrabold ${getScoreColor(avg)}`}>{avg}</span>
+                    <span className="text-[9px] text-gray-400 uppercase tracking-widest font-semibold">Avg</span>
                   </div>
-                  <p className="text-xs text-gray-500 truncate mb-1">{report.summary}</p>
-                  <div className="flex items-center gap-4 text-[10px] text-gray-600">
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(report.createdAt).toLocaleDateString()}</span>
-                    <span>Tech: {report.scores?.technical ?? 0}/10</span>
-                    <span>Comm: {report.scores?.communication ?? 0}/10</span>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-3 mb-1.5">
+                      <h3 className="text-base font-bold text-white truncate" style={{ fontFamily: 'Outfit' }}>
+                        Interview #{reports.length - i} • {report.interviewConfig?.role || 'Software Engineer'}
+                      </h3>
+                      <span className={`text-xs px-3 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                        report.verdict === 'Hire' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                      }`}>
+                        {report.verdict}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-gray-400 line-clamp-1 mb-2 leading-relaxed">{report.summary}</p>
+
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400">
+                      <span className="flex items-center gap-1.5 text-gray-300">
+                        <Clock className="w-3.5 h-3.5 text-gray-500" />
+                        {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                      <span>•</span>
+                      <span>Technical: <strong className="text-white">{report.scores?.technical ?? 0}/10</strong></span>
+                      <span>Communication: <strong className="text-white">{report.scores?.communication ?? 0}/10</strong></span>
+                      <span>Problem Solving: <strong className="text-white">{report.scores?.problem_solving ?? 0}/10</strong></span>
+                    </div>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-white transition-colors" />
+
+                <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-white group-hover:translate-x-1 transition-all shrink-0" />
               </button>
             );
           })}
