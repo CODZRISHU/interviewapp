@@ -287,6 +287,8 @@ def normalize_user_billing_document(user: dict) -> dict:
     total_combined_used = 0
     total_combined_capacity = 0
 
+    is_expired = result.get("billingStatus") == "expired"
+
     for b in ("10m", "15m", "30m"):
         if b not in result["mainCreditBuckets"]:
             result["mainCreditBuckets"][b] = {"total": 0, "used": 0, "remaining": 0}
@@ -296,8 +298,8 @@ def normalize_user_billing_document(user: dict) -> dict:
         m = result["mainCreditBuckets"][b]
         t = result["topupCreditBuckets"][b]
 
-        m["remaining"] = max(int(m.get("total", 0)) - int(m.get("used", 0)), 0)
-        t["remaining"] = max(int(t.get("total", 0)) - int(t.get("used", 0)), 0)
+        m["remaining"] = 0 if is_expired else max(int(m.get("total", 0)) - int(m.get("used", 0)), 0)
+        t["remaining"] = 0 if is_expired else max(int(t.get("total", 0)) - int(t.get("used", 0)), 0)
 
         tot = int(m.get("total", 0)) + int(t.get("total", 0))
         used = int(m.get("used", 0)) + int(t.get("used", 0))
@@ -413,8 +415,19 @@ async def reconcile_user_billing_state(user: dict) -> dict:
         status_value = "trial_used"
         updates["billingStatus"] = "trial_used"
 
+    if user.get("creditBuckets") != snapshot["creditBuckets"] or user.get("creditsRemaining") != snapshot["creditsRemaining"]:
+        updates["creditBuckets"] = snapshot["creditBuckets"]
+        updates["mainCreditBuckets"] = snapshot["mainCreditBuckets"]
+        updates["topupCreditBuckets"] = snapshot["topupCreditBuckets"]
+        updates["totalCredits"] = snapshot["totalCredits"]
+        updates["creditsUsed"] = snapshot["creditsUsed"]
+        updates["creditsRemaining"] = snapshot["creditsRemaining"]
+
     if updates:
-        await database.users.update_one({"id": user["id"]}, {"$set": updates})
+        try:
+            await database.users.update_one({"id": user["id"]}, {"$set": updates})
+        except Exception:
+            pass
         user = {**user, **updates}
 
     return {**user, **normalize_user_billing_document({**user, "billingStatus": status_value})}
@@ -626,12 +639,19 @@ async def verify_razorpay_payment(user: dict, order_id: str, payment_id: str, si
             "currentPeriodStart": period_start,
             "currentPeriodEnd": period_end,
             "mainCreditBuckets": main_buckets,
-            "topupCreditBuckets": zero_buckets,
+            "topupCreditBuckets": topup_buckets,
             "paymentProvider": "razorpay",
             "providerSubscriptionId": order_id,
             "cancelAtPeriodEnd": False,
         }
         product_type = "main_plan"
+
+    temp_merged = {**user, **user_updates}
+    norm = normalize_user_billing_document(temp_merged)
+    user_updates["creditBuckets"] = norm["creditBuckets"]
+    user_updates["totalCredits"] = norm["totalCredits"]
+    user_updates["creditsUsed"] = norm["creditsUsed"]
+    user_updates["creditsRemaining"] = norm["creditsRemaining"]
 
     await database.users.update_one({"id": user["id"]}, {"$set": user_updates})
 
@@ -786,6 +806,10 @@ async def consume_credit_for_interview(user_id: str, interview_id: str, duration
                 "$inc": {
                     f"mainCreditBuckets.{bucket_key}.used": 1,
                     f"mainCreditBuckets.{bucket_key}.remaining": -1,
+                    f"creditBuckets.{bucket_key}.used": 1,
+                    f"creditBuckets.{bucket_key}.remaining": -1,
+                    "creditsUsed": 1,
+                    "creditsRemaining": -1,
                 },
                 "$set": {"trialUsed": True},
             },
@@ -798,6 +822,10 @@ async def consume_credit_for_interview(user_id: str, interview_id: str, duration
                 "$inc": {
                     f"topupCreditBuckets.{bucket_key}.used": 1,
                     f"topupCreditBuckets.{bucket_key}.remaining": -1,
+                    f"creditBuckets.{bucket_key}.used": 1,
+                    f"creditBuckets.{bucket_key}.remaining": -1,
+                    "creditsUsed": 1,
+                    "creditsRemaining": -1,
                 },
                 "$set": {"trialUsed": True},
             },
