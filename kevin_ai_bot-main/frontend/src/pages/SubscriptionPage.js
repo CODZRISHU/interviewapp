@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
-import { Check, Sparkles, Shield, CreditCard, Clock, Award, Star, Flame } from "lucide-react";
+import { Check, Sparkles, Shield, Clock, Award, Flame, CreditCard, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -24,6 +25,7 @@ export default function SubscriptionPage() {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [purchasingPlan, setPurchasingPlan] = useState(null);
+  const [pendingMockOrder, setPendingMockOrder] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -39,6 +41,29 @@ export default function SubscriptionPage() {
       toast.error("Failed to load subscription plans.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const verifyAndActivate = async (orderId, paymentId, signature, planKey) => {
+    try {
+      toast.loading("Verifying payment with server...");
+      const verifyRes = await api.post("/billing/verify-payment", {
+        razorpay_order_id: orderId,
+        razorpay_payment_id: paymentId,
+        razorpay_signature: signature,
+        plan_key: planKey,
+      });
+
+      toast.dismiss();
+      toast.success(verifyRes.data.message || "Subscription activated successfully!");
+      await refreshUser();
+      navigate("/dashboard");
+    } catch (err) {
+      toast.dismiss();
+      toast.error(err.response?.data?.detail || "Payment verification failed.");
+    } finally {
+      setPurchasingPlan(null);
+      setPendingMockOrder(null);
     }
   };
 
@@ -75,25 +100,12 @@ export default function SubscriptionPage() {
           color: "#E50914",
         },
         handler: async function (response) {
-          try {
-            toast.loading("Verifying payment with server...");
-            const verifyRes = await api.post("/billing/verify-payment", {
-              razorpay_order_id: response.razorpay_order_id || order.orderId,
-              razorpay_payment_id: response.razorpay_payment_id || `pay_mock_${Date.now()}`,
-              razorpay_signature: response.razorpay_signature || "mock_signature",
-              plan_key: planKey,
-            });
-
-            toast.dismiss();
-            toast.success(verifyRes.data.message || "Subscription activated successfully!");
-            await refreshUser();
-            navigate("/dashboard");
-          } catch (err) {
-            toast.dismiss();
-            toast.error(err.response?.data?.detail || "Payment verification failed.");
-          } finally {
-            setPurchasingPlan(null);
-          }
+          await verifyAndActivate(
+            response.razorpay_order_id || order.orderId,
+            response.razorpay_payment_id || `pay_${Date.now()}`,
+            response.razorpay_signature || "signature_ok",
+            planKey
+          );
         },
         modal: {
           ondismiss: function () {
@@ -104,15 +116,10 @@ export default function SubscriptionPage() {
       };
 
       if (order.orderId.startsWith("order_mock_")) {
-        toast.info("Simulating Razorpay Payment Gateway...");
-        setTimeout(() => {
-          options.handler({
-            razorpay_order_id: order.orderId,
-            razorpay_payment_id: `pay_sim_${Date.now()}`,
-            razorpay_signature: "simulated_signature",
-          });
-        }, 1200);
+        // Dev Sandbox Mock Order (Keys not set or fallback)
+        setPendingMockOrder({ order, planKey, options });
       } else {
+        // Real Razorpay Checkout Modal Window
         const rzp = new window.Razorpay(options);
         rzp.open();
       }
@@ -228,7 +235,7 @@ export default function SubscriptionPage() {
             }`}
           >
             {purchasingPlan === "basic_99"
-              ? "Processing Checkout..."
+              ? "Opening Razorpay..."
               : currentPlanKey === "basic_99"
               ? "Current Active Plan"
               : "Subscribe Basic (₹99)"}
@@ -286,7 +293,7 @@ export default function SubscriptionPage() {
             }`}
           >
             {purchasingPlan === "premium_199"
-              ? "Processing Checkout..."
+              ? "Opening Razorpay..."
               : currentPlanKey === "premium_199"
               ? "Current Active Plan"
               : "Subscribe Premium (₹199)"}
@@ -312,6 +319,52 @@ export default function SubscriptionPage() {
           <p className="text-xs text-gray-400 mt-1">Download official PDF tax receipts immediately.</p>
         </div>
       </div>
+
+      {/* Dev Sandbox Mock Order Modal (When keys are not set) */}
+      <Dialog open={Boolean(pendingMockOrder)} onOpenChange={() => { setPendingMockOrder(null); setPurchasingPlan(null); }}>
+        <DialogContent className="netflix-glass border border-white/15 rounded-3xl max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-white flex items-center gap-2" style={{ fontFamily: "Outfit" }}>
+              <CreditCard className="w-5 h-5 text-[#E50914]" /> Razorpay Dev Sandbox
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <div className="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-2 text-xs">
+              <div className="flex justify-between"><span className="text-gray-400">Order ID:</span> <span className="font-mono text-white">{pendingMockOrder?.order?.orderId}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Plan:</span> <span className="font-bold text-white">{pendingMockOrder?.order?.planName}</span></div>
+              <div className="flex justify-between"><span className="text-gray-400">Amount:</span> <span className="font-extrabold text-emerald-400">₹{pendingMockOrder?.order?.amount}</span></div>
+            </div>
+
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Razorpay API keys are in Test Mode. Click below to simulate completing this payment transaction.
+            </p>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => {
+                  if (pendingMockOrder) {
+                    verifyAndActivate(
+                      pendingMockOrder.order.orderId,
+                      `pay_sim_${Date.now()}`,
+                      "simulated_signature",
+                      pendingMockOrder.planKey
+                    );
+                  }
+                }}
+                className="netflix-btn-red flex-1 py-3 rounded-xl font-bold text-xs"
+              >
+                Complete Test Payment
+              </button>
+              <button
+                onClick={() => { setPendingMockOrder(null); setPurchasingPlan(null); }}
+                className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 font-bold text-xs"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -358,9 +358,13 @@ async def create_razorpay_order(item_key: str, user: dict) -> dict:
             response = await client.post("https://api.razorpay.com/v1/orders", headers=headers, json=payload)
         if response.status_code == 200:
             order_data = response.json()
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Razorpay API Error ({response.status_code}): {response.text}"
+            )
 
     if not order_data:
-        # Fallback / Mock Order for testing & development
         mock_order_id = f"order_mock_{utc_now().strftime('%Y%m%d%H%M%S')}"
         order_data = {
             "id": mock_order_id,
