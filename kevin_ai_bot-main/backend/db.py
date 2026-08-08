@@ -39,9 +39,8 @@ async def ensure_indexes() -> None:
         (database.audit_logs, [("userId", 1), ("createdAt", -1)], {}),
         (database.subscriptions, "id", {"unique": True}),
         (database.subscriptions, [("userId", 1), ("status", 1)], {}),
-        (database.otp_verifications, "email", {}),
-        (database.otp_verifications, "expiresAt", {"expireAfterSeconds": 0}),
     ]
+
 
 
     for col, keys, opts in indexes:
