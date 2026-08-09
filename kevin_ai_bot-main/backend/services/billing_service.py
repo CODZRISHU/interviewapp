@@ -641,7 +641,7 @@ async def verify_razorpay_payment(user: dict, order_id: str, payment_id: str, si
             "currentPeriodStart": period_start,
             "currentPeriodEnd": period_end,
             "mainCreditBuckets": main_buckets,
-            "topupCreditBuckets": topup_buckets,
+            "topupCreditBuckets": zero_buckets,
             "paymentProvider": "razorpay",
             "providerSubscriptionId": order_id,
             "cancelAtPeriodEnd": False,
