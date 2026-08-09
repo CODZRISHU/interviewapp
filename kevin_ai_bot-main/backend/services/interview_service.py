@@ -74,7 +74,30 @@ async def start_interview_for_user(user: dict, config: dict) -> dict:
         "creditDeducted": False,
     }
     await database.interviews.insert_one(document)
-    await database.users.update_one({"id": user["id"]}, {"$set": {"usageCount": current_user.get("usageCount", 0) + 1}})
+    if user.get("planKey") == "free_trial":
+        zero_b = {
+            "10m": {"total": 1, "used": 1, "remaining": 0},
+            "15m": {"total": 0, "used": 0, "remaining": 0},
+            "30m": {"total": 0, "used": 0, "remaining": 0},
+        }
+        await database.users.update_one(
+            {"id": user["id"]},
+            {
+                "$set": {
+                    "trialUsed": True,
+                    "billingStatus": "trial_used",
+                    "mainCreditBuckets": zero_b,
+                    "creditBuckets": zero_b,
+                    "totalCredits": 1,
+                    "creditsUsed": 1,
+                    "creditsRemaining": 0,
+                    "usageCount": current_user.get("usageCount", 0) + 1,
+                }
+            },
+        )
+    else:
+        await database.users.update_one({"id": user["id"]}, {"$set": {"usageCount": current_user.get("usageCount", 0) + 1}})
+
     return {"interview_id": interview_id, "status": "active", "config": config, "state": state, "message": first_question["message"]}
 
 

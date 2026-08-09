@@ -43,7 +43,15 @@ export default function InterviewConfig() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeErrorMsg, setUpgradeErrorMsg] = useState('');
 
+  const isFreeTrialUsed = (user?.planKey === "free_trial" || user?.plan === "free") && (user?.trialUsed || user?.billingStatus === "trial_used" || (user?.creditsRemaining ?? 0) <= 0);
+
   const handleStart = async () => {
+    if (isFreeTrialUsed) {
+      setUpgradeErrorMsg("Your free trial attempt has already been used. Please subscribe to a plan to start a new interview.");
+      setShowUpgradeModal(true);
+      return;
+    }
+
     if (!user?.resumeText) {
       alert('Please upload your resume first from the dashboard.');
       navigate('/dashboard');
