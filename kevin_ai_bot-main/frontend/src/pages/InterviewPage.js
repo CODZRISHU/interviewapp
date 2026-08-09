@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, triggerGlobalUserRefresh } from '../context/AuthContext';
 import {
   Mic, MicOff, Square, ArrowLeft, Loader2, Volume2, VolumeX,
   Send, Code, Users, Briefcase, BookOpen, Sparkles, Video, VideoOff,
