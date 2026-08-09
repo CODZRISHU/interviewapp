@@ -95,8 +95,11 @@ export default function SubscriptionPage() {
       const res = await api.post("/billing/create-order", { itemKey });
       const order = res.data;
 
+      const rawKey = order.keyId && order.keyId !== "rzp_test_mock_key_id" ? order.keyId : "rzp_test_SbTSWFTWLhZTa1";
+      const cleanKey = String(rawKey).trim();
+
       const options = {
-        key: order.keyId || "rzp_test_SbTSWFTWLhZTa1",
+        key: cleanKey,
         amount: order.amountPaise,
         currency: order.currency || "INR",
         name: "Kevin AI",
@@ -126,6 +129,11 @@ export default function SubscriptionPage() {
       };
 
       const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", function (resp) {
+        setPurchasingItem(null);
+        const errMsg = resp.error?.description || resp.error?.reason || "Payment failed or unauthorized.";
+        toast.error(`Payment Error: ${errMsg}`);
+      });
       rzp.open();
     } catch (err) {
       toast.error(err.response?.data?.detail || "Unable to initiate checkout.");

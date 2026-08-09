@@ -194,7 +194,9 @@ def _timestamp_to_datetime(value: Any) -> Optional[datetime]:
 
 
 def _build_basic_auth_header() -> str:
-    raw = f"{settings.razorpay_key_id}:{settings.razorpay_key_secret}".encode("utf-8")
+    key_id = (settings.razorpay_key_id or "").strip()
+    key_secret = (settings.razorpay_key_secret or "").strip()
+    raw = f"{key_id}:{key_secret}".encode("utf-8")
     return f"Basic {base64.b64encode(raw).decode('utf-8')}"
 
 
@@ -570,7 +572,7 @@ async def create_razorpay_order(item_key: str, user: dict) -> dict:
         "amount": item.amount_inr,
         "amountPaise": amount_paise,
         "currency": "INR",
-        "keyId": settings.razorpay_key_id or "rzp_test_mock_key_id",
+        "keyId": (settings.razorpay_key_id or "rzp_test_mock_key_id").strip(),
         "planKey": item.key,
         "planName": item.display_name,
         "user": {"name": user["name"], "email": user["email"]},
