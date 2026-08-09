@@ -40,7 +40,10 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     fetchCatalog();
-  }, []);
+    if (refreshUser) {
+      refreshUser();
+    }
+  }, [refreshUser]);
 
   const fetchCatalog = async () => {
     try {
@@ -67,7 +70,10 @@ export default function SubscriptionPage() {
 
       toast.dismiss();
       toast.success(verifyRes.data.message || "Payment processed successfully!");
-      await refreshUser();
+      if (refreshUser) {
+        await refreshUser();
+      }
+      await fetchCatalog();
       navigate("/dashboard");
     } catch (err) {
       toast.dismiss();

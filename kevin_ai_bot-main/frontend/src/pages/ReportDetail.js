@@ -4,6 +4,8 @@ import { ArrowLeft, CheckCircle, AlertTriangle, Award, Lightbulb, Settings, Mess
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
 import { api } from '../services/api';
 
+import { triggerGlobalUserRefresh } from '../context/AuthContext';
+
 export default function ReportDetail() {
   const { reportId } = useParams();
   const navigate = useNavigate();
@@ -24,6 +26,7 @@ export default function ReportDetail() {
 
   useEffect(() => {
     fetchReport();
+    triggerGlobalUserRefresh();
   }, [fetchReport]);
 
   if (loading) {

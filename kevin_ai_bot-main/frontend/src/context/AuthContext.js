@@ -5,6 +5,10 @@ import { clearTokens, getRefreshToken, setTokens } from "../services/tokenStorag
 
 const AuthContext = createContext(null);
 
+export const triggerGlobalUserRefresh = () => {
+  window.dispatchEvent(new CustomEvent("kevin-auth:refresh-user"));
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -13,8 +17,10 @@ export function AuthProvider({ children }) {
     try {
       const userResponse = await api.get("/auth/me");
       setUser(userResponse.data);
+      return userResponse.data;
     } catch {
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -35,9 +41,17 @@ export function AuthProvider({ children }) {
       setLoading(false);
     };
 
+    const handleRefreshUser = () => {
+      checkAuth();
+    };
+
     window.addEventListener("kevin-auth:unauthorized", handleUnauthorized);
-    return () => window.removeEventListener("kevin-auth:unauthorized", handleUnauthorized);
-  }, []);
+    window.addEventListener("kevin-auth:refresh-user", handleRefreshUser);
+    return () => {
+      window.removeEventListener("kevin-auth:unauthorized", handleUnauthorized);
+      window.removeEventListener("kevin-auth:refresh-user", handleRefreshUser);
+    };
+  }, [checkAuth]);
 
   const login = (payload) => {
     if (payload?.tokens) {
@@ -61,7 +75,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth, refreshUser: checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

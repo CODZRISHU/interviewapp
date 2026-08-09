@@ -18,7 +18,10 @@ export default function Dashboard() {
 
   React.useEffect(() => {
     fetchReports();
-  }, []);
+    if (checkAuth) {
+      checkAuth();
+    }
+  }, [checkAuth]);
 
   const fetchReports = async () => {
     try {

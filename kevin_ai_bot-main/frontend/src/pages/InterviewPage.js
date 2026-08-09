@@ -226,11 +226,13 @@ export default function InterviewPage() {
     clearInterval(timerRef.current);
     try {
       const res = await api.post('/end-interview', { interview_id: interviewId });
+      triggerGlobalUserRefresh();
       navigate(`/reports/${res.data.id}`, { replace: true });
     } catch (err) {
       console.error('End interview error:', err);
       if (err.response?.status === 409 || err.response?.data?.id) {
         const rptId = err.response?.data?.id || `rpt_${interviewId.replace('int_', '')}`;
+        triggerGlobalUserRefresh();
         navigate(`/reports/${rptId}`, { replace: true });
         return;
       }
