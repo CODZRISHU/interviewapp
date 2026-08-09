@@ -86,8 +86,8 @@ export default function ReportDetail() {
       {/* Score Hero Card */}
       <div className="netflix-card rounded-3xl p-8 border border-white/10 relative overflow-hidden space-y-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
-            <div className={`w-24 h-24 rounded-2xl flex flex-col items-center justify-center border shrink-0 ${
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+            <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex flex-col items-center justify-center border shrink-0 ${
               isIncomplete
                 ? 'bg-gray-500/10 border-gray-500/20 text-gray-400'
                 : avgScore >= 8

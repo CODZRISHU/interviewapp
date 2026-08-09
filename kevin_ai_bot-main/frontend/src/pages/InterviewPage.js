@@ -327,10 +327,10 @@ export default function InterviewPage() {
   const glowGradient = SECTION_GLOW[currentSection] || SECTION_GLOW.introduction;
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-[#050505] text-white overflow-hidden font-sans select-none" data-testid="interview-page">
+    <div className="flex flex-col lg:flex-row h-screen bg-[#050505] text-white overflow-y-auto lg:overflow-hidden font-sans select-none" data-testid="interview-page">
       
-      {/* LEFT PANEL: 70% WIDTH (Main Stage Video & Avatar Room) */}
-      <div className="lg:w-[70%] flex flex-col h-full border-r border-white/10 relative overflow-hidden bg-[#050505]">
+      {/* LEFT PANEL: 70% WIDTH ON DESKTOP, FULL WIDTH ON MOBILE */}
+      <div className="w-full lg:w-[70%] flex flex-col min-h-[500px] lg:h-full border-b lg:border-b-0 lg:border-r border-white/10 relative overflow-hidden bg-[#050505] shrink-0">
         
         {/* Top Header Bar */}
         <header className="shrink-0 z-20 bg-[#08080B]/95 backdrop-blur-2xl border-b border-white/10 shadow-xl">

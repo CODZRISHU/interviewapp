@@ -108,6 +108,48 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Newsroom / Updates Section */}
+      <section id="newsroom" className="py-20 md:py-28 px-6 md:px-12 lg:px-24 border-t border-white/5 bg-[#07070A]">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-[#E50914]/10 border border-[#E50914]/30 rounded-full px-3.5 py-1 mb-3">
+                <Sparkles className="w-3 h-3 text-[#E50914]" />
+                <span className="text-[11px] font-semibold text-gray-200 uppercase tracking-wider">Newsroom & Updates</span>
+              </div>
+              <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-white" style={{ fontFamily: 'Outfit' }}>
+                Latest from <span className="text-[#E50914]">Kevin AI Newsroom</span>
+              </h2>
+            </div>
+            <p className="text-gray-400 text-xs sm:text-sm max-w-md">
+              Stay tuned on the latest AI interviewer release updates, system capabilities, and prep guides.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { tag: 'SYSTEM RELEASE', title: 'Top-Up Credits & Flexible Recharges Now Live', date: 'Aug 2026', desc: 'Candidates on active main subscriptions can now recharge 10m and 15m interview top-ups on demand.' },
+              { tag: 'AI CORE V2', title: 'Enhanced Multi-Question Adaptive Evaluation Engine', date: 'Jul 2026', desc: 'Improved natural language voice transcription and instant section score calculations.' },
+              { tag: 'PREP GUIDES', title: 'How to Structure Technical & Behavioral Responses', date: 'Jun 2026', desc: 'Master STAR method and system architecture explanations with real-time AI feedback.' },
+            ].map((news, idx) => (
+              <div key={idx} className="netflix-card rounded-2xl p-6 flex flex-col justify-between space-y-4 hover:border-[#E50914]/40 transition-all">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[10px] font-mono">
+                    <span className="px-2.5 py-0.5 rounded-md bg-[#E50914]/15 text-[#E50914] font-bold border border-[#E50914]/30">{news.tag}</span>
+                    <span className="text-gray-500">{news.date}</span>
+                  </div>
+                  <h3 className="text-base font-bold text-white leading-snug" style={{ fontFamily: 'Outfit' }}>{news.title}</h3>
+                  <p className="text-xs text-gray-400 leading-relaxed">{news.desc}</p>
+                </div>
+                <div className="pt-2 text-xs font-semibold text-[#E50914] flex items-center gap-1 group-hover:translate-x-1 transition-transform cursor-pointer">
+                  Read Update <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-24 md:py-32 px-6 md:px-12 lg:px-24 relative">
         <div className="max-w-4xl mx-auto text-center netflix-card p-12 md:p-16 rounded-3xl relative overflow-hidden">

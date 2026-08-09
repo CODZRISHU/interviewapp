@@ -174,10 +174,10 @@ export default function SubscriptionPage() {
 
         {/* Tab Switcher */}
         <div className="pt-4 flex justify-center">
-          <div className="p-1 rounded-2xl bg-black/60 border border-white/10 inline-flex gap-2">
+          <div className="p-1 rounded-2xl bg-black/60 border border-white/10 flex sm:inline-flex w-full sm:w-auto gap-1 sm:gap-2">
             <button
               onClick={() => setActiveTab("plans")}
-              className={`px-8 py-3 rounded-xl font-bold text-xs transition-all flex items-center gap-2 ${
+              className={`flex-1 sm:flex-initial px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
                 activeTab === "plans"
                   ? "netflix-btn-red shadow-lg text-white"
                   : "text-gray-400 hover:text-white"
@@ -187,7 +187,7 @@ export default function SubscriptionPage() {
             </button>
             <button
               onClick={() => setActiveTab("topup")}
-              className={`px-8 py-3 rounded-xl font-bold text-xs transition-all flex items-center gap-2 ${
+              className={`flex-1 sm:flex-initial px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
                 activeTab === "topup"
                   ? "netflix-btn-red shadow-lg text-white"
                   : "text-gray-400 hover:text-white"
