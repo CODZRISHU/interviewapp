@@ -35,10 +35,10 @@ class Settings(BaseSettings):
     support_email: str = Field("support@kevinai.app", alias="SUPPORT_EMAIL")
     razorpay_key_id: Optional[str] = Field(default=None, alias="RAZORPAY_KEY_ID")
     razorpay_key_secret: Optional[str] = Field(default=None, alias="RAZORPAY_KEY_SECRET")
-    razorpay_webhook_secret: Optional[str] = Field(default=None, alias="RAZORPAY_WEBHOOK_SECRET")
-    razorpay_starter_plan_id: Optional[str] = Field(default=None, alias="RAZORPAY_STARTER_PLAN_ID")
-    razorpay_pro_plan_id: Optional[str] = Field(default=None, alias="RAZORPAY_PRO_PLAN_ID")
-    razorpay_portal_url: Optional[str] = Field(default=None, alias="RAZORPAY_PORTAL_URL")
+    smtp_host: str = Field(default="smtp.gmail.com", alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="SMTP_PORT")
+    smtp_email: Optional[str] = Field(default="kevinaisupport@gmail.com", alias="SMTP_EMAIL")
+    smtp_password: Optional[str] = Field(default="qnol cjub nlmx tznv", alias="SMTP_PASSWORD")
     cors_origins: List[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
     model_config = SettingsConfigDict(

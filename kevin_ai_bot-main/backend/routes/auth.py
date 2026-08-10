@@ -7,10 +7,16 @@ from services.auth_service import (
     login_user,
     refresh_access_token,
     register_user,
+    resend_verification,
     revoke_refresh_token,
     serialize_user,
+    verify_email_token,
 )
 from services.billing_service import get_user_billing_snapshot, reconcile_user_billing_state
+from pydantic import BaseModel, EmailStr
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -19,6 +25,16 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", response_model=AuthResponse)
 async def register(payload: RegisterRequest):
     return await register_user(payload)
+
+
+@router.get("/verify-email", response_model=AuthResponse)
+async def verify_email(token: str):
+    return await verify_email_token(token)
+
+
+@router.post("/resend-verification")
+async def resend_verification_link(payload: ResendVerificationRequest):
+    return await resend_verification(payload.email)
 
 
 

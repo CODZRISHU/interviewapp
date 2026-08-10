@@ -102,15 +102,48 @@ export default function AuthPage() {
     };
   }, [googleClientId, googleEnabled, login, navigate]);
 
+  const [successMsg, setSuccessMsg] = useState("");
+  const [resending, setResending] = useState(false);
+
+  const handleResendVerification = async () => {
+    if (!form.email) {
+      alert("Please enter your Gmail address in the email field.");
+      return;
+    }
+    setResending(true);
+    try {
+      const res = await api.post("/auth/resend-verification", { email: form.email });
+      alert(res.data?.message || "Verification link sent! Check your Gmail inbox.");
+    } catch (err) {
+      alert(err.response?.data?.detail || "Failed to resend verification link.");
+    } finally {
+      setResending(false);
+    }
+  };
+
   const submit = async (event) => {
     event.preventDefault();
     setSubmitting(true);
     setError("");
+    setSuccessMsg("");
+
+    if (mode === "register" && !form.email.trim().toLowerCase().endsWith("@gmail.com")) {
+      setError("Registration is currently restricted to valid @gmail.com email addresses. Please enter a valid Gmail address to receive your verification link.");
+      setSubmitting(false);
+      return;
+    }
 
     try {
       const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
       const payload = mode === "login" ? { email: form.email, password: form.password } : form;
       const response = await api.post(endpoint, payload);
+
+      if (response.data?.requiresVerification) {
+        setSuccessMsg(response.data.message || "Registration successful! A verification link has been sent to your Gmail inbox. Please click the link to activate your account.");
+        setMode("login");
+        return;
+      }
+
       login(response.data);
       navigate("/dashboard", { replace: true });
     } catch (requestError) {
@@ -267,10 +300,26 @@ export default function AuthPage() {
                 />
               </label>
 
+              {successMsg ? (
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs font-medium text-emerald-300 leading-relaxed">
+                  {successMsg}
+                </div>
+              ) : null}
+
               {error ? (
-                <p className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-medium text-red-300 leading-relaxed">
-                  {error}
-                </p>
+                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-medium text-red-300 leading-relaxed space-y-2">
+                  <p>{error}</p>
+                  {error.includes("not been verified") && (
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={resending}
+                      className="text-xs font-bold text-[#E50914] underline hover:text-red-400 block mt-1"
+                    >
+                      {resending ? "Sending verification link..." : "Resend Verification Link to Gmail"}
+                    </button>
+                  )}
+                </div>
               ) : null}
 
               <button

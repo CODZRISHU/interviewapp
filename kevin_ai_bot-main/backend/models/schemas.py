@@ -38,6 +38,7 @@ class UserResponse(BaseModel):
     providerSubscriptionId: Optional[str] = None
     cancelAtPeriodEnd: bool = False
     fairUsagePolicy: bool = True
+    isEmailVerified: bool = True
     createdAt: datetime
     resumeFilename: str = ""
     resumeText: str = ""
@@ -45,8 +46,10 @@ class UserResponse(BaseModel):
 
 
 class AuthResponse(BaseModel):
-    user: UserResponse
-    tokens: TokenPair
+    user: Optional[UserResponse] = None
+    tokens: Optional[TokenPair] = None
+    requiresVerification: bool = False
+    message: Optional[str] = None
 
 
 class RegisterRequest(BaseModel):

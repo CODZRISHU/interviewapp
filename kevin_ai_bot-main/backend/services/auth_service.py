@@ -23,6 +23,10 @@ def _as_utc_datetime(value):
     return value.astimezone(timezone.utc)
 
 
+import asyncio
+import uuid
+from services.email_service import send_verification_email
+
 def serialize_user(document: dict) -> UserResponse:
     billing = normalize_user_billing_document(document)
     entitlements = build_entitlements(document)
@@ -51,6 +55,7 @@ def serialize_user(document: dict) -> UserResponse:
         providerSubscriptionId=billing.get("providerSubscriptionId"),
         cancelAtPeriodEnd=bool(billing.get("cancelAtPeriodEnd", False)),
         fairUsagePolicy=bool(billing.get("fairUsagePolicy", True)),
+        isEmailVerified=bool(document.get("isEmailVerified", True)),
         createdAt=document["createdAt"],
         resumeFilename=document.get("resumeFilename", ""),
         resumeText=document.get("resumeText", ""),
@@ -83,11 +88,16 @@ async def build_auth_response(user_document: dict) -> AuthResponse:
 
 def _new_user_document(name: str, email: str, password, auth_provider: str) -> dict:
     now = utc_now()
+    is_verified = (auth_provider == "google")
+    token = f"vtok_{uuid.uuid4().hex}" if not is_verified else None
+
     return {
         "id": f"user_{now.strftime('%Y%m%d%H%M%S%f')}",
         "name": name,
         "email": email,
         "password": password,
+        "isEmailVerified": is_verified,
+        "verificationToken": token,
         "plan": "free",
         "planKey": "free_trial",
         "billingStatus": "trial_available",
@@ -123,24 +133,83 @@ def _new_user_document(name: str, email: str, password, auth_provider: str) -> d
 
 
 async def register_user(payload: RegisterRequest) -> AuthResponse:
-    existing = await database.users.find_one({"email": payload.email.lower()})
+    email = payload.email.strip().lower()
+
+    if not email.endswith("@gmail.com"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Registration is currently restricted to valid @gmail.com email addresses. Please enter a valid Gmail address to receive your verification link.",
+        )
+
+    existing = await database.users.find_one({"email": email})
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account already exists for this email.")
 
-    user_document = _new_user_document(payload.name, payload.email.lower(), hash_password(payload.password), "email")
+    user_document = _new_user_document(payload.name, email, hash_password(payload.password), "email")
     await database.users.insert_one(user_document)
-    return await build_auth_response(user_document)
 
+    token = user_document.get("verificationToken")
+    verif_url = f"{settings.public_app_url}/verify-email?token={token}"
+    asyncio.create_task(send_verification_email(email, payload.name, verif_url))
 
+    return AuthResponse(
+        requiresVerification=True,
+        message="Registration successful! A verification link has been sent to your Gmail inbox. Please click the link to activate your account.",
+    )
 
 
 async def login_user(payload: LoginRequest) -> AuthResponse:
-    user_document = await database.users.find_one({"email": payload.email.lower()})
+    email = payload.email.strip().lower()
+    user_document = await database.users.find_one({"email": email})
     if not user_document or not user_document.get("password"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
     if not verify_password(payload.password, user_document["password"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
+
+    if user_document.get("authProvider") == "email" and not user_document.get("isEmailVerified", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your Gmail address has not been verified yet. Please check your Gmail inbox for the activation link.",
+        )
+
     return await build_auth_response(user_document)
+
+
+async def verify_email_token(token: str) -> AuthResponse:
+    user = await database.users.find_one({"verificationToken": token})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired email verification link. Please request a new link.",
+        )
+
+    await database.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"isEmailVerified": True, "verificationToken": None}},
+    )
+    user["isEmailVerified"] = True
+    user["verificationToken"] = None
+
+    auth_resp = await build_auth_response(user)
+    auth_resp.message = "Gmail address verified successfully! Logging you in..."
+    return auth_resp
+
+
+async def resend_verification(email: str) -> dict:
+    email = email.strip().lower()
+    user = await database.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No account found with this email.")
+
+    if user.get("isEmailVerified"):
+        return {"success": True, "message": "Your email is already verified. You can log in directly."}
+
+    token = user.get("verificationToken") or f"vtok_{uuid.uuid4().hex}"
+    await database.users.update_one({"id": user["id"]}, {"$set": {"verificationToken": token}})
+
+    verif_url = f"{settings.public_app_url}/verify-email?token={token}"
+    asyncio.create_task(send_verification_email(email, user.get("name", "Candidate"), verif_url))
+    return {"success": True, "message": "A new verification link has been sent to your Gmail inbox."}
 
 
 async def refresh_access_token(refresh_token: str) -> TokenPair:
