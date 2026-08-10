@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Play, Upload, FileText, BarChart3, Clock, ChevronRight, Sparkles, CreditCard, Award, ShieldAlert, MessageSquare } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
@@ -11,12 +11,19 @@ const maxVal = (val, fallback) => (val && val > 0 ? val : fallback);
 export default function Dashboard() {
   const { user, checkAuth } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [reports, setReports] = useState([]);
   const [loadingReports, setLoadingReports] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.openUpload) {
+      setShowUpload(true);
+    }
+  }, [location.state]);
 
   React.useEffect(() => {
     fetchReports();
@@ -69,12 +76,17 @@ export default function Dashboard() {
       });
       setUploadResult(res.data);
       await checkAuth();
+      setTimeout(() => {
+        setShowUpload(false);
+        setUploadResult(null);
+        navigate('/interview/config');
+      }, 1000);
     } catch (err) {
       setUploadResult({ error: err.response?.data?.detail || 'Upload failed' });
     } finally {
       setUploading(false);
     }
-  }, [checkAuth]);
+  }, [checkAuth, navigate]);
 
   const handleStartInterview = async () => {
     if (!user?.resumeText) {
