@@ -62,7 +62,7 @@ export default function PaymentHistoryPage() {
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white" style={{ fontFamily: "Outfit" }}>
               Payment Receipts & Invoices
             </h1>
-            <p className="text-gray-400 text-sm mt-1">Review past transaction details and download GST tax receipts.</p>
+            <p className="text-gray-400 text-sm mt-1">Review past transaction details and download payment receipts.</p>
           </div>
         </div>
 

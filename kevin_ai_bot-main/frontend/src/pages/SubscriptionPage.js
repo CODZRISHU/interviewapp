@@ -202,165 +202,99 @@ export default function SubscriptionPage() {
       {/* TAB 1: SUBSCRIPTION PLANS */}
       {activeTab === "plans" && (
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Free Plan */}
-          <div className="netflix-card rounded-3xl p-8 flex flex-col justify-between relative">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Default Trial</span>
-                {currentPlanKey === "free_trial" && (
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-white border border-white/15">Active Plan</span>
+          {plans.map((p) => {
+            const isCurrentActive = currentPlanKey === p.key && billingStatus === "active";
+            const isFree = p.key === "free_trial" || p.amountInr === 0;
+
+            return (
+              <div
+                key={p.key}
+                className={`netflix-card rounded-3xl p-8 flex flex-col justify-between relative ${
+                  p.highlighted
+                    ? "border-2 border-[#E50914] shadow-[0_0_40px_rgba(229,9,20,0.25)]"
+                    : "border-[#E50914]/30 hover:border-[#E50914]"
+                }`}
+              >
+                {p.tag && (
+                  <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-[#E50914] text-white text-[11px] font-extrabold uppercase tracking-wider shadow-lg flex items-center gap-1">
+                    <Flame className="w-3.5 h-3.5 fill-white" /> {p.tag}
+                  </div>
                 )}
-              </div>
-              <h3 className="text-2xl font-bold mb-2 text-white" style={{ fontFamily: "Outfit" }}>Free Plan</h3>
-              <p className="text-gray-400 text-xs mb-6">Experience real-time AI mock interviews.</p>
-              <div className="flex items-baseline mb-6">
-                <span className="text-4xl font-extrabold text-white">₹0</span>
-                <span className="text-gray-500 text-sm ml-2">/ forever</span>
-              </div>
 
-              <div className="space-y-4 mb-8 text-sm text-gray-300">
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                  <span><b>1</b> free 10-minute interview credit</span>
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold uppercase tracking-wider text-blue-400">
+                      {p.planGroup ? `${p.planGroup.toUpperCase()} TIER` : "SUBSCRIPTION"}
+                    </span>
+                    {isCurrentActive && (
+                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                        Active Plan
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2 text-white" style={{ fontFamily: "Outfit" }}>
+                    {p.displayName}
+                  </h3>
+                  <p className="text-gray-400 text-xs mb-6">
+                    {p.savingsText || "AI mock interview session package."}
+                  </p>
+
+                  <div className="flex items-baseline mb-6">
+                    <span className="text-4xl font-extrabold text-white">₹{p.amountInr}</span>
+                    <span className="text-gray-500 text-sm ml-2">
+                      {isFree ? "/ forever" : `/ ${p.validForDays || 30} days`}
+                    </span>
+                    {p.strikeThroughAmountInr && (
+                      <span className="text-xs text-emerald-400 line-through ml-3">
+                        ₹{p.strikeThroughAmountInr}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-4 mb-8 text-sm text-gray-300">
+                    {Object.entries(p.bucketBreakdown || {}).map(([bKey, bCount]) =>
+                      bCount > 0 ? (
+                        <div key={bKey} className="flex items-center gap-3">
+                          <Check className="w-4 h-4 text-[#E50914] shrink-0" />
+                          <span>
+                            <b>{bCount}</b> × {bKey.replace("m", "-minute")} interviews
+                          </span>
+                        </div>
+                      ) : null
+                    )}
+                    <div className="flex items-center gap-3">
+                      <Check className="w-4 h-4 text-[#E50914] shrink-0" />
+                      <span>Total <b>{p.credits}</b> session credits</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                  <span>AI detailed feedback & scoring</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                  <span>2-minute duration safety protection</span>
-                </div>
+
+                <button
+                  onClick={() => handlePurchase(p.key)}
+                  disabled={isFree || purchasingItem === p.key || hasActiveMainPlan}
+                  className={`w-full py-3.5 rounded-xl font-bold text-xs transition-all ${
+                    isFree
+                      ? "bg-white/5 text-gray-400 cursor-not-allowed border border-white/5"
+                      : isCurrentActive
+                      ? "bg-blue-500/20 text-blue-300 border border-blue-500/30 cursor-default"
+                      : hasActiveMainPlan
+                      ? "bg-white/5 text-gray-500 cursor-not-allowed border border-white/5"
+                      : "netflix-btn-red shadow-lg"
+                  }`}
+                >
+                  {isFree
+                    ? (currentPlanKey === "free_trial" ? "Current Active Plan" : "Free Trial")
+                    : purchasingItem === p.key
+                    ? "Opening Checkout..."
+                    : isCurrentActive
+                    ? "Current Active Plan"
+                    : hasActiveMainPlan
+                    ? "Available after current plan expires"
+                    : `Subscribe ${p.displayName} (₹${p.amountInr})`}
+                </button>
               </div>
-            </div>
-
-            <button
-              disabled={true}
-              className="w-full py-3.5 rounded-xl font-bold text-xs bg-white/5 text-gray-400 cursor-not-allowed border border-white/5"
-            >
-              {currentPlanKey === "free_trial" ? "Current Active Plan" : "Free Plan"}
-            </button>
-          </div>
-
-          {/* Basic Plan ₹99 */}
-          <div className="netflix-card rounded-3xl p-8 flex flex-col justify-between relative border-[#E50914]/30 hover:border-[#E50914]">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Starter Pack</span>
-                {currentPlanKey === "basic_99" && billingStatus === "active" && (
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">Active Plan</span>
-                )}
-              </div>
-              <h3 className="text-2xl font-bold mb-2 text-white" style={{ fontFamily: "Outfit" }}>Basic Plan</h3>
-              <p className="text-gray-400 text-xs mb-6">Essential interview volume for targeted practice.</p>
-              <div className="flex items-baseline mb-6">
-                <span className="text-4xl font-extrabold text-white">₹99</span>
-                <span className="text-gray-500 text-sm ml-2">/ 30 days</span>
-                <span className="text-xs text-emerald-400 line-through ml-3">₹199</span>
-              </div>
-
-              <div className="space-y-4 mb-8 text-sm text-gray-300">
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                  <span><b>7</b> × 10-minute interviews</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                  <span><b>3</b> × 15-minute interviews</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                  <span>Total <b>10</b> interviews included</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                  <span>Downloadable Tax Invoices</span>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => handlePurchase("basic_99")}
-              disabled={purchasingItem === "basic_99" || hasActiveMainPlan}
-              className={`w-full py-3.5 rounded-xl font-bold text-xs transition-all ${
-                currentPlanKey === "basic_99" && billingStatus === "active"
-                  ? "bg-blue-500/20 text-blue-300 border border-blue-500/30 cursor-default"
-                  : hasActiveMainPlan
-                  ? "bg-white/5 text-gray-500 cursor-not-allowed border border-white/5"
-                  : "netflix-btn-red shadow-lg"
-              }`}
-            >
-              {purchasingItem === "basic_99"
-                ? "Opening Razorpay..."
-                : currentPlanKey === "basic_99" && billingStatus === "active"
-                ? "Current Active Plan"
-                : hasActiveMainPlan
-                ? "Available after current plan expires"
-                : "Subscribe Basic (₹99)"}
-            </button>
-          </div>
-
-          {/* Premium Plan ₹199 */}
-          <div className="netflix-card rounded-3xl p-8 flex flex-col justify-between relative border-2 border-[#E50914] shadow-[0_0_40px_rgba(229,9,20,0.25)]">
-            <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-[#E50914] text-white text-[11px] font-extrabold uppercase tracking-wider shadow-lg flex items-center gap-1">
-              <Flame className="w-3.5 h-3.5 fill-white" /> Popular Tier
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#E50914]">Full Access</span>
-                {currentPlanKey === "premium_199" && billingStatus === "active" && (
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#E50914]/20 text-[#E50914] border border-[#E50914]/30">Active Plan</span>
-                )}
-              </div>
-              <h3 className="text-2xl font-bold mb-2 text-white" style={{ fontFamily: "Outfit" }}>Premium Plan</h3>
-              <p className="text-gray-400 text-xs mb-6">Complete suite for senior & deep technical rounds.</p>
-              <div className="flex items-baseline mb-6">
-                <span className="text-4xl font-extrabold text-white">₹199</span>
-                <span className="text-gray-500 text-sm ml-2">/ 30 days</span>
-                <span className="text-xs text-emerald-400 line-through ml-3">₹399</span>
-              </div>
-
-              <div className="space-y-4 mb-8 text-sm text-gray-200">
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                  <span><b>1</b> × 30-minute full mock interview</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                  <span><b>5</b> × 15-minute interviews</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                  <span><b>5</b> × 10-minute interviews</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                  <span>Priority AI evaluation response time</span>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => handlePurchase("premium_199")}
-              disabled={purchasingItem === "premium_199" || hasActiveMainPlan}
-              className={`w-full py-3.5 rounded-xl font-bold text-xs transition-all ${
-                currentPlanKey === "premium_199" && billingStatus === "active"
-                  ? "bg-[#E50914]/20 text-[#E50914] border border-[#E50914]/30 cursor-default"
-                  : hasActiveMainPlan
-                  ? "bg-white/5 text-gray-500 cursor-not-allowed border border-white/5"
-                  : "netflix-btn-red shadow-[0_0_25px_rgba(229,9,20,0.5)]"
-              }`}
-            >
-              {purchasingItem === "premium_199"
-                ? "Opening Razorpay..."
-                : currentPlanKey === "premium_199" && billingStatus === "active"
-                ? "Current Active Plan"
-                : hasActiveMainPlan
-                ? "Available after current plan expires"
-                : "Subscribe Premium (₹199)"}
-            </button>
-          </div>
+            );
+          })}
         </div>
       )}
 
@@ -389,148 +323,70 @@ export default function SubscriptionPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* TOP-X ₹59 */}
-            <div className="netflix-card rounded-3xl p-8 flex flex-col justify-between relative border-[#E50914]/20 hover:border-[#E50914]">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Mini Top-Up</span>
-                  <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-white/10 text-gray-300">TOP-X</span>
-                </div>
-                <h3 className="text-2xl font-bold mb-2 text-white" style={{ fontFamily: "Outfit" }}>TOP-X Pack</h3>
-                <p className="text-gray-400 text-xs mb-6">Quick credit refill for urgent practice.</p>
-                <div className="flex items-baseline mb-4">
-                  <span className="text-4xl font-extrabold text-white">₹59</span>
-                </div>
-                <div className="text-xs text-amber-400 font-semibold mb-6 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" /> Valid until {formatDate(mainPlanExpiry)}
-                </div>
-
-                <div className="space-y-4 mb-8 text-sm text-gray-300">
-                  <div className="flex items-center gap-3">
-                    <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                    <span><b>3</b> × 10-minute interviews</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                    <span>Same active plan validity</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => handlePurchase("topup_x_59")}
-                disabled={purchasingItem === "topup_x_59" || !topupEligibility.eligible}
-                className={`w-full py-3.5 rounded-xl font-bold text-xs transition-all ${
-                  topupEligibility.eligible
-                    ? "netflix-btn-red shadow-lg"
-                    : "bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed"
+            {topups.map((t) => (
+              <div
+                key={t.key}
+                className={`netflix-card rounded-3xl p-8 flex flex-col justify-between relative ${
+                  t.highlighted
+                    ? "border-2 border-[#E50914] shadow-[0_0_30px_rgba(229,9,20,0.2)]"
+                    : "border-[#E50914]/20 hover:border-[#E50914]"
                 }`}
               >
-                {purchasingItem === "topup_x_59"
-                  ? "Opening Razorpay..."
-                  : topupEligibility.eligible
-                  ? "Recharge ₹59"
-                  : "Top-up Locked"}
-              </button>
-            </div>
+                {t.tag && (
+                  <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-[#E50914] text-white text-[11px] font-extrabold uppercase tracking-wider shadow-lg flex items-center gap-1">
+                    <Flame className="w-3.5 h-3.5 fill-white" /> {t.tag}
+                  </div>
+                )}
 
-            {/* TOP-Y ₹99 */}
-            <div className="netflix-card rounded-3xl p-8 flex flex-col justify-between relative border-2 border-[#E50914] shadow-[0_0_30px_rgba(229,9,20,0.2)]">
-              <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-[#E50914] text-white text-[11px] font-extrabold uppercase tracking-wider shadow-lg flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5 fill-white" /> Popular Top-Up
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                      Top-Up Pack
+                    </span>
+                    <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-white/10 text-gray-300">
+                      {t.displayName}
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2 text-white" style={{ fontFamily: "Outfit" }}>
+                    {t.displayName}
+                  </h3>
+                  <p className="text-gray-400 text-xs mb-6">Credit refill for active subscribers.</p>
+                  <div className="flex items-baseline mb-4">
+                    <span className="text-4xl font-extrabold text-white">₹{t.amountInr}</span>
+                  </div>
+                  <div className="text-xs text-amber-400 font-semibold mb-6 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5" /> Valid until {formatDate(mainPlanExpiry)}
+                  </div>
+
+                  <div className="space-y-4 mb-8 text-sm text-gray-300">
+                    {Object.entries(t.bucketBreakdown || {}).map(([bKey, bCount]) =>
+                      bCount > 0 ? (
+                        <div key={bKey} className="flex items-center gap-3">
+                          <Check className="w-4 h-4 text-[#E50914] shrink-0" />
+                          <span><b>{bCount}</b> × {bKey.replace("m", "-minute")} interviews</span>
+                        </div>
+                      ) : null
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handlePurchase(t.key)}
+                  disabled={purchasingItem === t.key || !topupEligibility.eligible}
+                  className={`w-full py-3.5 rounded-xl font-bold text-xs transition-all ${
+                    topupEligibility.eligible
+                      ? "netflix-btn-red shadow-lg"
+                      : "bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed"
+                  }`}
+                >
+                  {purchasingItem === t.key
+                    ? "Opening Razorpay..."
+                    : topupEligibility.eligible
+                    ? `Recharge ₹${t.amountInr}`
+                    : "Top-up Locked"}
+                </button>
               </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#E50914]">Standard Top-Up</span>
-                  <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[#E50914]/20 text-[#E50914]">TOP-Y</span>
-                </div>
-                <h3 className="text-2xl font-bold mb-2 text-white" style={{ fontFamily: "Outfit" }}>TOP-Y Pack</h3>
-                <p className="text-gray-400 text-xs mb-6">Double volume 10-minute session top-up.</p>
-                <div className="flex items-baseline mb-4">
-                  <span className="text-4xl font-extrabold text-white">₹99</span>
-                </div>
-                <div className="text-xs text-amber-400 font-semibold mb-6 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" /> Valid until {formatDate(mainPlanExpiry)}
-                </div>
-
-                <div className="space-y-4 mb-8 text-sm text-gray-200">
-                  <div className="flex items-center gap-3">
-                    <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                    <span><b>6</b> × 10-minute interviews</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                    <span>Same active plan validity</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => handlePurchase("topup_y_99")}
-                disabled={purchasingItem === "topup_y_99" || !topupEligibility.eligible}
-                className={`w-full py-3.5 rounded-xl font-bold text-xs transition-all ${
-                  topupEligibility.eligible
-                    ? "netflix-btn-red shadow-[0_0_25px_rgba(229,9,20,0.5)]"
-                    : "bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed"
-                }`}
-              >
-                {purchasingItem === "topup_y_99"
-                  ? "Opening Razorpay..."
-                  : topupEligibility.eligible
-                  ? "Recharge ₹99"
-                  : "Top-up Locked"}
-              </button>
-            </div>
-
-            {/* TOP-Z ₹149 */}
-            <div className="netflix-card rounded-3xl p-8 flex flex-col justify-between relative border-[#E50914]/20 hover:border-[#E50914]">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-purple-400">Max Top-Up</span>
-                  <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300">TOP-Z</span>
-                </div>
-                <h3 className="text-2xl font-bold mb-2 text-white" style={{ fontFamily: "Outfit" }}>TOP-Z Pack</h3>
-                <p className="text-gray-400 text-xs mb-6">Complete refill including 15-minute rounds.</p>
-                <div className="flex items-baseline mb-4">
-                  <span className="text-4xl font-extrabold text-white">₹149</span>
-                </div>
-                <div className="text-xs text-amber-400 font-semibold mb-6 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" /> Valid until {formatDate(mainPlanExpiry)}
-                </div>
-
-                <div className="space-y-4 mb-8 text-sm text-gray-300">
-                  <div className="flex items-center gap-3">
-                    <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                    <span><b>6</b> × 10-minute interviews</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                    <span><b>3</b> × 15-minute interviews</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Check className="w-4 h-4 text-[#E50914] shrink-0" />
-                    <span>Total <b>9</b> interviews included</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => handlePurchase("topup_z_149")}
-                disabled={purchasingItem === "topup_z_149" || !topupEligibility.eligible}
-                className={`w-full py-3.5 rounded-xl font-bold text-xs transition-all ${
-                  topupEligibility.eligible
-                    ? "netflix-btn-red shadow-lg"
-                    : "bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed"
-                }`}
-              >
-                {purchasingItem === "topup_z_149"
-                  ? "Opening Razorpay..."
-                  : topupEligibility.eligible
-                  ? "Recharge ₹149"
-                  : "Top-up Locked"}
-              </button>
-            </div>
+            ))}
           </div>
         </div>
       )}

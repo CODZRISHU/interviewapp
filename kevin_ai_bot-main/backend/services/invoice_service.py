@@ -93,16 +93,12 @@ def generate_pdf_invoice(payment: dict) -> bytes:
     td_style = ParagraphStyle("TD", parent=styles["Normal"], fontName="Helvetica", fontSize=9, textColor=colors.HexColor("#0F172A"))
     td_bold = ParagraphStyle("TDB", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=9, textColor=colors.HexColor("#0F172A"))
 
-    amount = float(payment.get("amount", 0))
-    gst = float(payment.get("gstAmount", 0))
-    total = float(payment.get("totalAmount", amount + gst))
+    amount = float(payment.get("totalAmount", payment.get("amount", 0)))
 
     table_data = [
         [Paragraph("DESCRIPTION", th_style), Paragraph("QTY", th_style), Paragraph("UNIT PRICE (INR)", th_style), Paragraph("TOTAL (INR)", th_style)],
-        [Paragraph(f"<b>{payment.get('planName', 'Kevin AI Subscription')}</b><br/><font size=8 color='#64748B'>Subscription Plan</font>", td_style), Paragraph("1", td_style), Paragraph(f"₹{amount:.2f}", td_style), Paragraph(f"₹{amount:.2f}", td_style)],
-        ["", "", Paragraph("Subtotal:", td_bold), Paragraph(f"₹{amount:.2f}", td_style)],
-        ["", "", Paragraph("GST (18%):", td_bold), Paragraph(f"₹{gst:.2f}", td_style)],
-        ["", "", Paragraph("<b>Total Paid:</b>", td_bold), Paragraph(f"<b>₹{total:.2f}</b>", td_bold)],
+        [Paragraph(f"<b>{payment.get('planName', 'Kevin AI Plan')}</b><br/><font size=8 color='#64748B'>AI Interview Session Package</font>", td_style), Paragraph("1", td_style), Paragraph(f"₹{amount:.2f}", td_style), Paragraph(f"₹{amount:.2f}", td_style)],
+        ["", "", Paragraph("<b>Total Amount Paid:</b>", td_bold), Paragraph(f"<b>₹{amount:.2f}</b>", td_bold)],
     ]
 
     item_table = Table(table_data, colWidths=[3.2 * inch, 0.8 * inch, 1.5 * inch, 1.5 * inch])
@@ -115,7 +111,7 @@ def generate_pdf_invoice(payment: dict) -> bytes:
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
                 ("TOPPADDING", (0, 0), (-1, -1), 8),
                 ("LINEBELOW", (0, 1), (-1, 1), 1, colors.HexColor("#E2E8F0")),
-                ("BACKGROUND", (2, 4), (3, 4), colors.HexColor("#F8FAFC")),
+                ("BACKGROUND", (2, 2), (3, 2), colors.HexColor("#F8FAFC")),
             ]
         )
     )

@@ -165,6 +165,39 @@ TOPUP_PLAN_KEYS = {"topup_x_59", "topup_y_99", "topup_z_149"}
 BILLING_STATUSES = {"trial_available", "trial_used", "active", "past_due", "cancelled", "expired"}
 
 
+async def ensure_pricing_catalog_in_db():
+    try:
+        count = await database.pricing_catalog.count_documents({})
+        if count == 0:
+            docs = []
+            for key, item in PURCHASE_ITEMS.items():
+                data = asdict(item)
+                data["_id"] = key
+                docs.append(data)
+            if docs:
+                await database.pricing_catalog.insert_many(docs)
+    except Exception as e:
+        pass
+
+
+async def get_purchase_item_from_db(item_key: str) -> PurchaseItem:
+    await ensure_pricing_catalog_in_db()
+    doc = None
+    try:
+        doc = await database.pricing_catalog.find_one({"key": item_key})
+    except Exception:
+        pass
+
+    if doc:
+        doc.pop("_id", None)
+        return PurchaseItem(**doc)
+
+    item = PURCHASE_ITEMS.get(item_key)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Unknown purchase item '{item_key}'.")
+    return item
+
+
 def get_purchase_item(item_key: str) -> PurchaseItem:
     item = PURCHASE_ITEMS.get(item_key)
     if not item:
@@ -222,14 +255,38 @@ def _plan_to_public_dict(item: PurchaseItem) -> dict:
 
 
 async def get_public_catalog() -> dict:
+    await ensure_pricing_catalog_in_db()
+    
+    db_items = []
+    try:
+        cursor = database.pricing_catalog.find({})
+        db_items = await cursor.to_list(length=100)
+    except Exception:
+        pass
+
+    items_map = {}
+    for d in db_items:
+        d.pop("_id", None)
+        try:
+            items_map[d["key"]] = PurchaseItem(**d)
+        except Exception:
+            pass
+
+    for k, v in PURCHASE_ITEMS.items():
+        if k not in items_map:
+            items_map[k] = v
+
     plans = [
-        _plan_to_public_dict(PURCHASE_ITEMS[key])
+        _plan_to_public_dict(items_map[key])
         for key in ["free_trial", "basic_99", "premium_199"]
+        if key in items_map
     ]
     topups = [
-        _plan_to_public_dict(PURCHASE_ITEMS[key])
+        _plan_to_public_dict(items_map[key])
         for key in ["topup_x_59", "topup_y_99", "topup_z_149"]
+        if key in items_map
     ]
+
     return {
         "plans": plans,
         "topups": topups,
@@ -526,7 +583,7 @@ async def get_user_billing_snapshot(user: dict) -> dict:
 
 async def create_razorpay_order(item_key: str, user: dict) -> dict:
     user = await reconcile_user_billing_state(user)
-    item = get_purchase_item(item_key)
+    item = await get_purchase_item_from_db(item_key)
 
     if item.key == "free_trial":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Free plan does not require payment.")
@@ -606,7 +663,7 @@ async def create_razorpay_order(item_key: str, user: dict) -> dict:
 
 
 async def verify_razorpay_payment(user: dict, order_id: str, payment_id: str, signature: str, plan_key: str) -> dict:
-    item = get_purchase_item(plan_key)
+    item = await get_purchase_item_from_db(plan_key)
 
     # Server-Side Signature Verification
     if settings.razorpay_key_secret and not order_id.startswith("order_mock_"):
@@ -620,8 +677,8 @@ async def verify_razorpay_payment(user: dict, order_id: str, payment_id: str, si
 
     now = _now()
     subtotal = float(item.amount_inr)
-    gst_amount = round(subtotal * 0.18, 2)
-    total_amount = round(subtotal + gst_amount, 2)
+    gst_amount = 0.0
+    total_amount = float(item.amount_inr)
     invoice_number = f"INV-{now.strftime('%Y%m%d')}-{utc_now().microsecond:06d}"[:18]
 
     snapshot = normalize_user_billing_document(user)
