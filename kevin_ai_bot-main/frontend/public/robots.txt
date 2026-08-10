@@ -1,0 +1,19 @@
+# Kevin AI - SEO Robots File
+User-agent: *
+Allow: /
+Allow: /subscription
+Allow: /privacy
+Allow: /terms
+Allow: /refund-policy
+Allow: /contact
+
+# Disallow authenticated candidate app portals
+Disallow: /dashboard
+Disallow: /interview/*
+Disallow: /reports/*
+Disallow: /profile
+Disallow: /payments
+Disallow: /admin/*
+Disallow: /mongo-ui
+
+Sitemap: https://interviewapp-three.vercel.app/sitemap.xml

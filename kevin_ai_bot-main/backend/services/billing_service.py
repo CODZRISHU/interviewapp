@@ -273,12 +273,14 @@ def _default_credit_fields() -> dict:
         "paymentProvider": None,
         "cancelAtPeriodEnd": False,
         "fairUsagePolicy": True,
+        "feedbackSubmitted": False,
     }
 
 
 def normalize_user_billing_document(user: dict) -> dict:
     defaults = _default_credit_fields()
     result = {key: user.get(key, value) for key, value in defaults.items()}
+    result["feedbackSubmitted"] = bool(user.get("feedbackSubmitted", False))
     if not isinstance(result.get("mainCreditBuckets"), dict):
         result["mainCreditBuckets"] = defaults["mainCreditBuckets"]
     if not isinstance(result.get("topupCreditBuckets"), dict):

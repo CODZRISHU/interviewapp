@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, BarChart3, User, LogOut, CreditCard, Receipt, Sparkles, X } from 'lucide-react';
+import { LayoutDashboard, BarChart3, User, LogOut, CreditCard, Receipt, Sparkles, X, MessageSquare, ShieldCheck } from 'lucide-react';
 
 export default function Sidebar({ mobileOpen = false, onClose = () => {} }) {
   const { user, logout } = useAuth();
@@ -19,6 +19,7 @@ export default function Sidebar({ mobileOpen = false, onClose = () => {} }) {
     { to: '/payments', icon: <Receipt className="w-4 h-4" />, label: 'Payments' },
     { to: '/reports', icon: <BarChart3 className="w-4 h-4" />, label: 'Reports' },
     { to: '/profile', icon: <User className="w-4 h-4" />, label: 'Profile' },
+    { to: '/contact', icon: <MessageSquare className="w-4 h-4 text-[#E50914]" />, label: 'Raise a Request' },
   ];
 
   return (

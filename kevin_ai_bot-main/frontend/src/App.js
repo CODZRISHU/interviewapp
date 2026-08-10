@@ -17,12 +17,20 @@ import InterviewConfig from "./pages/InterviewConfig";
 import SubscriptionPage from "./pages/SubscriptionPage";
 import PaymentHistoryPage from "./pages/PaymentHistoryPage";
 import AdminPaymentsPage from "./pages/AdminPaymentsPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
+import RefundPolicyPage from "./pages/RefundPolicyPage";
+import ContactPage from "./pages/ContactPage";
 
 function AppRouter() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/refund-policy" element={<RefundPolicyPage />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route path="/interview/config" element={
         <ProtectedRoute><InterviewConfig /></ProtectedRoute>
       } />

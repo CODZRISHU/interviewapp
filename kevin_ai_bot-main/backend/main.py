@@ -69,11 +69,15 @@ async def health() -> dict:
 
 
 from routes.mongo_ui import router as mongo_ui_router
+from routes.feedback import router as feedback_router
+from routes.contact import router as contact_router
 
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(billing_router, prefix=settings.api_prefix)
 app.include_router(admin_router, prefix=settings.api_prefix)
 app.include_router(interviews_router, prefix=settings.api_prefix)
 app.include_router(reports_router, prefix=settings.api_prefix)
+app.include_router(feedback_router)
+app.include_router(contact_router)
 app.include_router(mongo_ui_router)
 

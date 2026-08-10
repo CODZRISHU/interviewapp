@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Play, Upload, FileText, BarChart3, Clock, ChevronRight, Sparkles, CreditCard, Award, ShieldAlert } from 'lucide-react';
+import { Play, Upload, FileText, BarChart3, Clock, ChevronRight, Sparkles, CreditCard, Award, ShieldAlert, MessageSquare } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import FreeTrialFeedbackModal from '../components/FreeTrialFeedbackModal';
 import { api } from '../services/api';
 
 const maxVal = (val, fallback) => (val && val > 0 ? val : fallback);
@@ -15,6 +16,7 @@ export default function Dashboard() {
   const [showUpload, setShowUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   React.useEffect(() => {
     fetchReports();
@@ -22,6 +24,22 @@ export default function Dashboard() {
       checkAuth();
     }
   }, [checkAuth]);
+
+  const isFeedbackAlreadyDone = user?.feedbackSubmitted || (user?.id && localStorage.getItem(`kevin-feedback-submitted-${user.id}`) === 'true');
+  const isTrialOverWithoutFeedback = (user?.billingStatus === "trial_used" || (user?.planKey === "free_trial" && user?.trialUsed)) && !isFeedbackAlreadyDone;
+
+  React.useEffect(() => {
+    if (isTrialOverWithoutFeedback) {
+      setShowFeedbackModal(true);
+    }
+  }, [isTrialOverWithoutFeedback]);
+
+  const handleCloseFeedbackModal = () => {
+    if (user?.id) {
+      localStorage.setItem(`kevin-feedback-submitted-${user.id}`, 'true');
+    }
+    setShowFeedbackModal(false);
+  };
 
   const fetchReports = async () => {
     try {
@@ -416,6 +434,11 @@ export default function Dashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <FreeTrialFeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={handleCloseFeedbackModal}
+      />
     </div>
   );
 }

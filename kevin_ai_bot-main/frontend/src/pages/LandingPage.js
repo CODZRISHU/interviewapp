@@ -172,13 +172,21 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-white/10 py-10 px-6 md:px-12 bg-[#050505]">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-[#E50914] rounded-lg flex items-center justify-center shadow-sm">
               <span className="text-white font-bold text-sm" style={{ fontFamily: 'Outfit' }}>K</span>
             </div>
             <span className="text-sm text-gray-400 font-medium">Kevin AI Interviewer</span>
           </div>
+
+          <div className="flex flex-wrap items-center gap-6 text-xs text-gray-400 font-medium">
+            <a href="/privacy" className="hover:text-white transition">Privacy Policy</a>
+            <a href="/terms" className="hover:text-white transition">Terms of Service</a>
+            <a href="/refund-policy" className="hover:text-white transition">Refund Policy</a>
+            <a href="/contact" className="hover:text-[#E50914] transition font-bold text-[#E50914]/90">Raise a Request</a>
+          </div>
+
           <span className="text-xs text-gray-500">© 2026 Kevin AI Platform. All rights reserved.</span>
         </div>
       </footer>
