@@ -26,14 +26,25 @@ const SECTION_GLOW = {
 
 function deduplicateText(text) {
   if (!text) return '';
-  const words = text.trim().split(/\s+/);
-  const result = [];
+  let str = text.trim();
+
+  // 1. Remove consecutive duplicate words
+  const words = str.split(/\s+/);
+  const cleanWords = [];
   for (let i = 0; i < words.length; i += 1) {
     if (i === 0 || words[i].toLowerCase() !== words[i - 1].toLowerCase()) {
-      result.push(words[i]);
+      cleanWords.push(words[i]);
     }
   }
-  return result.join(' ');
+  str = cleanWords.join(' ');
+
+  // 2. Remove consecutive duplicate multi-word phrases (e.g. "application is a fine application is a fine")
+  for (let len = 8; len >= 2; len -= 1) {
+    const pattern = new RegExp(`(\\b(?:\\w+\\s+){${len - 1}}\\w+\\b)\\s+\\1\\b`, 'gi');
+    str = str.replace(pattern, '$1');
+  }
+
+  return str;
 }
 
 // TTS Helper
@@ -295,22 +306,50 @@ export default function InterviewPage() {
         recognition.onstart = () => setIsRecording(true);
 
         recognition.onresult = (event) => {
-          let currentFinal = '';
-          let interimText = '';
+          let finalChunks = [];
+          let latestInterim = '';
+
           for (let i = 0; i < event.results.length; i += 1) {
-            const segment = event.results[i][0]?.transcript || '';
-            if (event.results[i].isFinal) {
-              currentFinal += ` ${segment}`;
+            const res = event.results[i];
+            const text = (res[0]?.transcript || '').trim();
+            if (!text) continue;
+
+            if (res.isFinal) {
+              if (finalChunks.length > 0) {
+                const lastIdx = finalChunks.length - 1;
+                const prevText = finalChunks[lastIdx];
+                if (text.toLowerCase().startsWith(prevText.toLowerCase())) {
+                  finalChunks[lastIdx] = text;
+                } else if (!prevText.toLowerCase().includes(text.toLowerCase())) {
+                  finalChunks.push(text);
+                }
+              } else {
+                finalChunks.push(text);
+              }
             } else {
-              interimText += ` ${segment}`;
+              latestInterim = text;
             }
           }
-          const cleanFinal = deduplicateText(currentFinal);
-          accumulatedFinalRef.current = cleanFinal;
-          const preview = deduplicateText(`${cleanFinal} ${interimText}`);
-          transcriptRef.current = preview;
-          setLiveTranscript(preview);
-          setInput(preview);
+
+          let fullFinal = finalChunks.join(' ').trim();
+          let combined = '';
+
+          if (latestInterim) {
+            if (fullFinal && latestInterim.toLowerCase().startsWith(fullFinal.toLowerCase())) {
+              combined = latestInterim;
+            } else if (fullFinal && fullFinal.toLowerCase().startsWith(latestInterim.toLowerCase())) {
+              combined = fullFinal;
+            } else {
+              combined = `${fullFinal} ${latestInterim}`.trim();
+            }
+          } else {
+            combined = fullFinal;
+          }
+
+          const cleanPreview = deduplicateText(combined);
+          transcriptRef.current = cleanPreview;
+          setLiveTranscript(cleanPreview);
+          setInput(cleanPreview);
         };
 
         recognition.onerror = (event) => {
