@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, Play, Loader2, Code, Users, Shuffle, GraduationCap, Briefcase, Award, Clock, Sparkles, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Play, Loader2, Code, Users, Shuffle, GraduationCap, Briefcase, Award, Clock, Sparkles, AlertTriangle, Laptop, Smartphone } from 'lucide-react';
 import { api } from '../services/api';
 
 const TYPES = [
@@ -42,10 +42,15 @@ export default function InterviewConfig() {
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeErrorMsg, setUpgradeErrorMsg] = useState('');
+  const [showMobileWarningModal, setShowMobileWarningModal] = useState(false);
 
   const isFreeTrialUsed = (user?.planKey === "free_trial" || user?.plan === "free") && (user?.trialUsed || user?.billingStatus === "trial_used" || (user?.creditsRemaining ?? 0) <= 0);
 
-  const handleStart = async () => {
+  const isMobileDevice = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+  };
+
+  const handleStart = async (bypassMobileCheck = false) => {
     if (isFreeTrialUsed) {
       setUpgradeErrorMsg("Your free trial attempt has already been used. Please subscribe to a plan to start a new interview.");
       setShowUpgradeModal(true);
@@ -57,6 +62,13 @@ export default function InterviewConfig() {
       navigate('/dashboard', { state: { openUpload: true } });
       return;
     }
+
+    if (!bypassMobileCheck && isMobileDevice()) {
+      setShowMobileWarningModal(true);
+      return;
+    }
+
+    setShowMobileWarningModal(false);
     setStarting(true);
     try {
       const res = await api.post('/start-interview', config);
@@ -148,18 +160,17 @@ export default function InterviewConfig() {
 
           {/* Section 3: Role */}
           <div>
-            <h2 className="text-xl font-bold tracking-tight mb-1 text-white" style={{ fontFamily: 'Outfit' }}>Target Engineering Role</h2>
-            <p className="text-xs text-gray-400 mb-4">Choose preset or type custom job role</p>
-            <div className="flex flex-wrap gap-2.5 mb-4">
+            <h2 className="text-xl font-bold tracking-tight mb-1 text-white" style={{ fontFamily: 'Outfit' }}>Target Position</h2>
+            <p className="text-xs text-gray-400 mb-4">Select or specify target job title</p>
+            <div className="flex flex-wrap gap-2 mb-4">
               {ROLES.map(r => (
                 <button
                   key={r}
-                  data-testid={`role-${r.toLowerCase().replace(/\s+/g, '-')}`}
                   onClick={() => { setConfig(c => ({ ...c, role: r })); setCustomRole(''); }}
-                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
                     config.role === r && !customRole
-                      ? 'bg-[#E50914] text-white shadow-[0_0_15px_rgba(229,9,20,0.4)]'
-                      : 'bg-white/5 border border-white/10 text-gray-400 hover:border-white/20 hover:text-white'
+                      ? 'bg-[#E50914] text-white shadow-md'
+                      : 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10'
                   }`}
                 >
                   {r}
@@ -167,35 +178,35 @@ export default function InterviewConfig() {
               ))}
             </div>
             <input
-              data-testid="custom-role-input"
+              type="text"
+              placeholder="Or enter custom role..."
               value={customRole}
-              onChange={(e) => { setCustomRole(e.target.value); setConfig(c => ({ ...c, role: e.target.value || c.role })); }}
-              placeholder="Or type a custom role title..."
-              className="w-full bg-[#0A0A0E] border border-white/15 rounded-2xl px-5 py-3.5 text-sm text-white placeholder:text-gray-500 outline-none focus:border-[#E50914] focus:ring-1 focus:ring-[#E50914] transition-all"
+              onChange={e => {
+                setCustomRole(e.target.value);
+                setConfig(c => ({ ...c, role: e.target.value || 'Software Engineer' }));
+              }}
+              className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#E50914]"
             />
           </div>
 
           {/* Section 4: Duration */}
           <div>
             <h2 className="text-xl font-bold tracking-tight mb-1 text-white" style={{ fontFamily: 'Outfit' }}>Session Duration</h2>
-            <p className="text-xs text-gray-400 mb-4">Select total duration (requires matching credit bucket)</p>
+            <p className="text-xs text-gray-400 mb-4">Choose interview time allocation</p>
             <div className="grid grid-cols-3 gap-4">
               {DURATIONS.map(d => (
                 <button
                   key={d.value}
-                  data-testid={`duration-${d.value}`}
                   onClick={() => setConfig(c => ({ ...c, duration: d.value }))}
-                  className={`p-5 rounded-2xl border text-center transition-all ${
+                  className={`p-4 rounded-2xl border text-center transition-all ${
                     config.duration === d.value
                       ? 'border-[#E50914] bg-[#E50914]/10 shadow-[0_0_25px_rgba(229,9,20,0.25)]'
                       : 'netflix-card hover:border-white/20'
                   }`}
                 >
-                  <div className="flex items-center justify-center gap-1.5 mb-2">
-                    <Clock className={`w-4 h-4 ${config.duration === d.value ? 'text-[#E50914]' : 'text-gray-400'}`} />
-                  </div>
-                  <p className="text-base font-bold text-white" style={{ fontFamily: 'Outfit' }}>{d.label}</p>
-                  <p className="text-xs text-gray-400 mt-1">{d.questions}</p>
+                  <Clock className={`w-5 h-5 mx-auto mb-2 ${config.duration === d.value ? 'text-[#E50914]' : 'text-gray-400'}`} />
+                  <p className="text-sm font-bold text-white mb-0.5" style={{ fontFamily: 'Outfit' }}>{d.label}</p>
+                  <p className="text-[11px] text-gray-400">{d.questions}</p>
                 </button>
               ))}
             </div>
@@ -214,7 +225,7 @@ export default function InterviewConfig() {
 
           <button
             data-testid="start-configured-interview-btn"
-            onClick={handleStart}
+            onClick={() => handleStart(false)}
             disabled={starting}
             className="netflix-btn-red w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-3 shadow-[0_0_35px_rgba(229,9,20,0.5)] disabled:opacity-50"
           >
@@ -226,6 +237,36 @@ export default function InterviewConfig() {
           </button>
         </div>
       </div>
+
+      {showMobileWarningModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="netflix-card rounded-3xl max-w-md w-full p-8 text-center border border-amber-500/30 shadow-[0_0_50px_rgba(245,158,11,0.2)]">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto mb-5">
+              <Laptop className="w-8 h-8" />
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-3" style={{ fontFamily: 'Outfit' }}>
+              Desktop / Laptop Recommended
+            </h3>
+            <p className="text-gray-300 text-xs sm:text-sm mb-6 leading-relaxed">
+              Mobile web browsers have audio hardware & speech API limitations that may cause mic pauses or transcript repetitions. For the most realistic, seamless AI interview experience, we strongly recommend using a <b>Laptop or Desktop</b>.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => setShowMobileWarningModal(false)}
+                className="flex-1 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 font-semibold text-xs text-white transition"
+              >
+                Close & Cancel
+              </button>
+              <button
+                onClick={() => handleStart(true)}
+                className="netflix-btn-red flex-1 py-3.5 rounded-xl font-bold text-xs shadow-md"
+              >
+                Continue Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showUpgradeModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
