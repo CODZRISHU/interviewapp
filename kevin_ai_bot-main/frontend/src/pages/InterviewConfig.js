@@ -53,8 +53,8 @@ export default function InterviewConfig() {
     }
 
     if (!user?.resumeText) {
-      alert('Please upload your resume first from the dashboard.');
-      navigate('/dashboard');
+      alert('Please upload your resume first.');
+      navigate('/dashboard', { state: { openUpload: true } });
       return;
     }
     setStarting(true);
