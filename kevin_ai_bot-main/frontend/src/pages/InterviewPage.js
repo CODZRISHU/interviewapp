@@ -4,7 +4,7 @@ import { useAuth, triggerGlobalUserRefresh } from '../context/AuthContext';
 import {
   Mic, MicOff, Square, ArrowLeft, Loader2, Volume2, VolumeX,
   Send, Code, Users, Briefcase, BookOpen, Sparkles, Video, VideoOff,
-  CameraOff, MessageSquare
+  CameraOff, MessageSquare, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -23,6 +23,29 @@ const SECTION_GLOW = {
   skills: 'from-blue-500/20 via-blue-950/10 to-transparent',
   fundamentals: 'from-purple-500/20 via-purple-950/10 to-transparent',
 };
+
+function deduplicateText(text) {
+  if (!text) return '';
+  let str = text.trim();
+
+  // 1. Remove consecutive duplicate words
+  const words = str.split(/\s+/);
+  const cleanWords = [];
+  for (let i = 0; i < words.length; i += 1) {
+    if (i === 0 || words[i].toLowerCase() !== words[i - 1].toLowerCase()) {
+      cleanWords.push(words[i]);
+    }
+  }
+  str = cleanWords.join(' ');
+
+  // 2. Remove consecutive duplicate multi-word phrases (e.g. "application is a fine application is a fine")
+  for (let len = 8; len >= 2; len -= 1) {
+    const pattern = new RegExp(`(\\b(?:\\w+\\s+){${len - 1}}\\w+\\b)\\s+\\1\\b`, 'gi');
+    str = str.replace(pattern, '$1');
+  }
+
+  return str;
+}
 
 // TTS Helper
 const speakText = (text, onStart, onEnd, voiceRef) => {
@@ -71,11 +94,14 @@ export default function InterviewPage() {
 
   // Video & Webcam State
   const [cameraOn, setCameraOn] = useState(true);
+  const [cameraCollapsed, setCameraCollapsed] = useState(false);
   const videoRef = useRef(null);
 
   const mediaRecorderRef = useRef(null);
   const recognitionRef = useRef(null);
   const transcriptRef = useRef('');
+  const isUserRecordingRef = useRef(false);
+  const accumulatedFinalRef = useRef('');
   const utteranceRef = useRef(null);
   const timerRef = useRef(null);
   const chatEndRef = useRef(null);
@@ -137,6 +163,7 @@ export default function InterviewPage() {
     const mediaRecorder = mediaRecorderRef.current;
     return () => {
       window.speechSynthesis?.cancel();
+      isUserRecordingRef.current = false;
       recognitionRef.current?.abort?.();
       if (mediaRecorder?.stream) {
         mediaRecorder.stream.getTracks().forEach((track) => track.stop());
@@ -170,7 +197,6 @@ export default function InterviewPage() {
   const totalQ = interviewState?.total_questions || 8;
   const questionProgress = Math.min(100, (currentQ / totalQ) * 100);
   const currentSection = interviewState?.current_section || 'introduction';
-  const coveredSections = interviewState?.covered_sections || {};
   const timeWarning = remainingTime < 120 && remainingTime > 0;
 
   useEffect(() => {
@@ -222,6 +248,7 @@ export default function InterviewPage() {
     if (ending) return;
     if (!skipConfirm && !window.confirm('End interview? Kevin will generate your evaluation report.')) return;
     setEnding(true);
+    isUserRecordingRef.current = false;
     window.speechSynthesis?.cancel();
     clearInterval(timerRef.current);
     try {
@@ -261,47 +288,93 @@ export default function InterviewPage() {
     setVoiceError('');
     setResponseError('');
     setLiveTranscript('');
+    isUserRecordingRef.current = true;
+    accumulatedFinalRef.current = '';
+    transcriptRef.current = '';
+
     try {
       window.speechSynthesis?.cancel(); setIsSpeaking(false);
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
-        transcriptRef.current = '';
         const recognition = new SpeechRecognition();
         recognitionRef.current = recognition;
         recognition.lang = 'en-US';
         recognition.interimResults = true;
         recognition.continuous = true;
         recognition.maxAlternatives = 1;
+
         recognition.onstart = () => setIsRecording(true);
+
         recognition.onresult = (event) => {
-          let finalText = '';
-          let interimText = '';
+          let finalChunks = [];
+          let latestInterim = '';
+
           for (let i = 0; i < event.results.length; i += 1) {
-            const segment = event.results[i][0]?.transcript || '';
-            if (event.results[i].isFinal) {
-              finalText += `${segment} `;
+            const res = event.results[i];
+            const text = (res[0]?.transcript || '').trim();
+            if (!text) continue;
+
+            if (res.isFinal) {
+              if (finalChunks.length > 0) {
+                const lastIdx = finalChunks.length - 1;
+                const prevText = finalChunks[lastIdx];
+                if (text.toLowerCase().startsWith(prevText.toLowerCase())) {
+                  finalChunks[lastIdx] = text;
+                } else if (!prevText.toLowerCase().includes(text.toLowerCase())) {
+                  finalChunks.push(text);
+                }
+              } else {
+                finalChunks.push(text);
+              }
             } else {
-              interimText += `${segment} `;
+              latestInterim = text;
             }
           }
-          const preview = `${finalText} ${interimText}`.trim();
-          transcriptRef.current = preview;
-          setLiveTranscript(preview);
-          setInput(preview);
+
+          let fullFinal = finalChunks.join(' ').trim();
+          let combined = '';
+
+          if (latestInterim) {
+            if (fullFinal && latestInterim.toLowerCase().startsWith(fullFinal.toLowerCase())) {
+              combined = latestInterim;
+            } else if (fullFinal && fullFinal.toLowerCase().startsWith(latestInterim.toLowerCase())) {
+              combined = fullFinal;
+            } else {
+              combined = `${fullFinal} ${latestInterim}`.trim();
+            }
+          } else {
+            combined = fullFinal;
+          }
+
+          const cleanPreview = deduplicateText(combined);
+          transcriptRef.current = cleanPreview;
+          setLiveTranscript(cleanPreview);
+          setInput(cleanPreview);
         };
+
         recognition.onerror = (event) => {
-          if (event.error !== 'aborted') {
+          if (event.error !== 'aborted' && event.error !== 'no-speech') {
             setVoiceError('Speech recognition issue. You can try speaking again or type your answer.');
           }
         };
+
         recognition.onend = () => {
-          setIsRecording(false);
-          const finalText = transcriptRef.current;
-          recognitionRef.current = null;
-          if (finalText?.trim()) {
-            submitVoiceTranscript(finalText);
+          if (isUserRecordingRef.current) {
+            try {
+              recognition.start();
+            } catch (err) {
+              // Ignore if already starting/running
+            }
+          } else {
+            setIsRecording(false);
+            const finalText = transcriptRef.current;
+            recognitionRef.current = null;
+            if (finalText?.trim()) {
+              submitVoiceTranscript(finalText);
+            }
           }
         };
+
         recognition.start();
         return;
       }
@@ -314,10 +387,15 @@ export default function InterviewPage() {
   };
 
   const stopRecording = () => {
-    recognitionRef.current?.stop?.();
+    isUserRecordingRef.current = false;
+    setIsRecording(false);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+    }
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
-      setIsRecording(false);
     }
   };
 
@@ -348,50 +426,38 @@ export default function InterviewPage() {
 
               <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs">
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#EF4444]" />
-                <span className="font-bold tracking-wider text-gray-200">LIVE</span>
-                <span className="text-gray-600">|</span>
-                <span className={`font-mono font-bold ${timeWarning ? 'text-red-400 animate-pulse' : 'text-gray-300'}`}>
-                  {formatTime(remainingTime)}
-                </span>
-                <span className="text-gray-600">|</span>
-                <span data-testid="question-counter" className="font-bold text-gray-300">
-                  Q{currentQ}/{totalQ}
-                </span>
-                {interviewConfig && (
-                  <>
-                    <span className="hidden md:inline text-gray-600">|</span>
-                    <span className="hidden md:inline capitalize text-gray-400">{interviewConfig.interview_type}</span>
-                    <span className="hidden lg:inline text-gray-600">|</span>
-                    <span className="hidden lg:inline capitalize text-gray-400">{interviewConfig.level}</span>
-                  </>
-                )}
+                <span className="font-semibold text-gray-300">Live Interview Session</span>
               </div>
             </div>
 
-            {/* Right Controls */}
-            <div className="flex items-center gap-2">
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${sectionMeta.bg} ${sectionMeta.color}`} data-testid="current-section-badge">
+            {/* Middle Section & Time */}
+            <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${sectionMeta.bg} ${sectionMeta.color}`}>
                 {sectionMeta.icon}
                 <span>{sectionMeta.label}</span>
               </div>
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono">
+                <span className="text-gray-400">Time:</span>
+                <span className={`font-bold ${timeWarning ? 'text-red-400 animate-pulse' : 'text-white'}`}>{formatTime(remainingTime)}</span>
+              </div>
+            </div>
 
+            {/* Right Mute & End Buttons */}
+            <div className="flex items-center gap-2">
               <button
-                data-testid="mute-toggle"
                 onClick={toggleMute}
-                className={`p-2 rounded-full text-xs transition-all border ${muted ? 'bg-red-500/20 border-red-500/30 text-red-400' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
+                className={`p-2 rounded-xl border transition-all ${muted ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'}`}
                 title={muted ? "Unmute AI Voice" : "Mute AI Voice"}
               >
                 {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
-
               <button
                 data-testid="end-interview-btn"
                 onClick={() => handleEndInterview()}
                 disabled={ending}
-                className="netflix-btn-red px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 disabled:opacity-50"
+                className="netflix-btn-red px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md"
               >
-                {ending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Square className="w-3.5 h-3.5 fill-white" />}
-                <span>{ending ? 'Finishing...' : 'End Interview'}</span>
+                <Square className="w-3.5 h-3.5 fill-white" /> End Session
               </button>
             </div>
           </div>
@@ -446,31 +512,52 @@ export default function InterviewPage() {
             )}
           </div>
 
-          {/* PIP Bottom Right Corner Webcam Box (Zoom / Google Meet Call style) */}
-          <div className="absolute bottom-6 right-6 z-30 w-44 sm:w-56 h-32 sm:h-40 rounded-2xl border-2 border-white/20 shadow-[0_12px_40px_rgba(0,0,0,0.8)] bg-[#0A0A0E] overflow-hidden group">
-            {cameraOn ? (
-              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform -scale-x-100" />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-[#0F0F12] text-gray-500">
-                <CameraOff className="w-8 h-8 mb-1 text-gray-600" />
-                <span className="text-[10px] uppercase font-bold tracking-wider">Camera Off</span>
-              </div>
-            )}
-
-            {/* User Name Badge on Video Box */}
-            <div className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[10px] font-semibold text-white truncate max-w-[130px]">
-              {user?.name || 'You'} (Candidate)
-            </div>
-
-            {/* Camera Toggle Button */}
+          {/* PIP Bottom Right Corner Webcam Box (Collapsible) */}
+          {cameraCollapsed ? (
             <button
-              onClick={() => setCameraOn(!cameraOn)}
-              className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-gray-300 hover:text-white hover:bg-black/90 transition-all opacity-80 group-hover:opacity-100"
-              title={cameraOn ? "Turn Camera Off" : "Turn Camera On"}
+              onClick={() => setCameraCollapsed(false)}
+              className="absolute bottom-6 right-6 z-30 px-3.5 py-2 rounded-full bg-[#0A0A0E]/90 backdrop-blur-xl border border-white/20 text-xs font-bold text-white flex items-center gap-2 shadow-2xl hover:bg-white/10 transition-all group"
+              title="Expand Camera Preview"
             >
-              {cameraOn ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5 text-red-400" />}
+              <Video className="w-4 h-4 text-[#E50914] group-hover:scale-110 transition-transform" />
+              <span>Camera</span>
+              <ChevronUp className="w-3.5 h-3.5 text-gray-400" />
             </button>
-          </div>
+          ) : (
+            <div className="absolute bottom-6 right-6 z-30 w-44 sm:w-56 h-32 sm:h-40 rounded-2xl border-2 border-white/20 shadow-[0_12px_40px_rgba(0,0,0,0.8)] bg-[#0A0A0E] overflow-hidden group">
+              {cameraOn ? (
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform -scale-x-100" />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-[#0F0F12] text-gray-500">
+                  <CameraOff className="w-8 h-8 mb-1 text-gray-600" />
+                  <span className="text-[10px] uppercase font-bold tracking-wider">Camera Off</span>
+                </div>
+              )}
+
+              {/* User Name Badge on Video Box */}
+              <div className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[10px] font-semibold text-white truncate max-w-[120px]">
+                {user?.name || 'You'} (Candidate)
+              </div>
+
+              {/* Camera Collapse Button */}
+              <button
+                onClick={() => setCameraCollapsed(true)}
+                className="absolute top-2 left-2 p-1.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-gray-300 hover:text-white hover:bg-black/90 transition-all opacity-80 group-hover:opacity-100"
+                title="Collapse Camera Preview"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Camera On/Off Toggle Button */}
+              <button
+                onClick={() => setCameraOn(!cameraOn)}
+                className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-gray-300 hover:text-white hover:bg-black/90 transition-all opacity-80 group-hover:opacity-100"
+                title={cameraOn ? "Turn Camera Off" : "Turn Camera On"}
+              >
+                {cameraOn ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5 text-red-400" />}
+              </button>
+            </div>
+          )}
         </main>
       </div>
 
