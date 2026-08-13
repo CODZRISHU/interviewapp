@@ -4,8 +4,9 @@ import { useAuth, triggerGlobalUserRefresh } from '../context/AuthContext';
 import {
   Mic, MicOff, Square, ArrowLeft, Loader2, Volume2, VolumeX,
   Send, Code, Users, Briefcase, BookOpen, Sparkles, Video, VideoOff,
-  CameraOff, MessageSquare, ChevronDown, ChevronUp
+  CameraOff, MessageSquare, ChevronDown, ChevronUp, Download, Share2, Copy, X, Check, Monitor
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { api } from '../services/api';
 
 const SECTION_META = {
@@ -28,7 +29,6 @@ function deduplicateText(text) {
   if (!text) return '';
   let str = text.trim();
 
-  // 1. Remove consecutive duplicate words
   const words = str.split(/\s+/);
   const cleanWords = [];
   for (let i = 0; i < words.length; i += 1) {
@@ -38,7 +38,6 @@ function deduplicateText(text) {
   }
   str = cleanWords.join(' ');
 
-  // 2. Remove consecutive duplicate multi-word phrases (e.g. "application is a fine application is a fine")
   for (let len = 8; len >= 2; len -= 1) {
     const pattern = new RegExp(`(\\b(?:\\w+\\s+){${len - 1}}\\w+\\b)\\s+\\1\\b`, 'gi');
     str = str.replace(pattern, '$1');
@@ -97,15 +96,82 @@ export default function InterviewPage() {
   const [cameraCollapsed, setCameraCollapsed] = useState(false);
   const videoRef = useRef(null);
 
+  // Screen Recording & Social Sharing Modal State
+  const [screenRecordingActive, setScreenRecordingActive] = useState(false);
+  const [screenRecordingUrl, setScreenRecordingUrl] = useState(null);
+  const [showScreenPrompt, setShowScreenPrompt] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [completedReportId, setCompletedReportId] = useState(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
   const mediaRecorderRef = useRef(null);
+  const screenRecorderRef = useRef(null);
+  const screenChunksRef = useRef([]);
+  const screenStreamRef = useRef(null);
   const recognitionRef = useRef(null);
   const transcriptRef = useRef('');
   const isUserRecordingRef = useRef(false);
-  const accumulatedFinalRef = useRef('');
+  const finalSavedTranscriptRef = useRef('');
+  const currentSessionTranscriptRef = useRef('');
   const utteranceRef = useRef(null);
   const timerRef = useRef(null);
   const chatEndRef = useRef(null);
-  const browserSpeechSupported = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  // Prompt for Screen Recording on Mount if supported
+  useEffect(() => {
+    if (navigator.mediaDevices?.getDisplayMedia && !screenRecordingActive && !showScreenPrompt && !showShareModal) {
+      setShowScreenPrompt(true);
+    }
+  }, []); // eslint-disable-line
+
+  const requestScreenRecording = async () => {
+    try {
+      setShowScreenPrompt(false);
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: "browser" },
+        audio: true,
+      });
+      screenStreamRef.current = stream;
+      screenChunksRef.current = [];
+
+      const recorder = new MediaRecorder(stream);
+      screenRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          screenChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(screenChunksRef.current, { type: 'video/webm' });
+        if (blob.size > 0) {
+          const url = URL.createObjectURL(blob);
+          setScreenRecordingUrl(url);
+        }
+      };
+
+      recorder.start(1000);
+      setScreenRecordingActive(true);
+      toast.success("Screen recording active for your interview session.");
+    } catch (err) {
+      console.warn("Screen recording permission denied or unsupported:", err);
+      toast.info("Proceeding without screen recording.");
+      setShowScreenPrompt(false);
+    }
+  };
+
+  const stopScreenRecording = () => {
+    if (screenRecorderRef.current && screenRecorderRef.current.state !== 'inactive') {
+      try {
+        screenRecorderRef.current.stop();
+      } catch (e) {}
+    }
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((track) => track.stop());
+    }
+    setScreenRecordingActive(false);
+  };
 
   // Auto-scroll chat thread
   useEffect(() => {
@@ -165,6 +231,7 @@ export default function InterviewPage() {
       window.speechSynthesis?.cancel();
       isUserRecordingRef.current = false;
       recognitionRef.current?.abort?.();
+      stopScreenRecording();
       if (mediaRecorder?.stream) {
         mediaRecorder.stream.getTracks().forEach((track) => track.stop());
       }
@@ -251,21 +318,39 @@ export default function InterviewPage() {
     isUserRecordingRef.current = false;
     window.speechSynthesis?.cancel();
     clearInterval(timerRef.current);
+    stopScreenRecording();
+
     try {
       const res = await api.post('/end-interview', { interview_id: interviewId });
       triggerGlobalUserRefresh();
-      navigate(`/reports/${res.data.id}`, { replace: true });
+      setCompletedReportId(res.data.id);
+      setShowShareModal(true);
     } catch (err) {
       console.error('End interview error:', err);
-      if (err.response?.status === 409 || err.response?.data?.id) {
-        const rptId = err.response?.data?.id || `rpt_${interviewId.replace('int_', '')}`;
-        triggerGlobalUserRefresh();
-        navigate(`/reports/${rptId}`, { replace: true });
-        return;
-      }
-      alert(err.response?.data?.detail || 'Failed to end interview.');
+      const rptId = err.response?.data?.id || `rpt_${interviewId.replace('int_', '')}`;
+      triggerGlobalUserRefresh();
+      setCompletedReportId(rptId);
+      setShowShareModal(true);
+    } finally {
       setEnding(false);
     }
+  };
+
+  const handleProceedToReport = () => {
+    setShowShareModal(false);
+    if (completedReportId) {
+      navigate(`/reports/${completedReportId}`, { replace: true });
+    } else {
+      navigate('/dashboard', { replace: true });
+    }
+  };
+
+  const handleCopyShareLink = () => {
+    const link = "https://www.kevinhr.in";
+    navigator.clipboard.writeText(`I just completed an AI Mock Interview with Kevin AI at ${link}! Check it out to practice your interviews: ${link}`);
+    setLinkCopied(true);
+    toast.success("Share text copied to clipboard! Paste on Instagram or socials.");
+    setTimeout(() => setLinkCopied(false), 3000);
   };
 
   const toggleMute = () => {
@@ -289,7 +374,8 @@ export default function InterviewPage() {
     setResponseError('');
     setLiveTranscript('');
     isUserRecordingRef.current = true;
-    accumulatedFinalRef.current = '';
+    finalSavedTranscriptRef.current = '';
+    currentSessionTranscriptRef.current = '';
     transcriptRef.current = '';
 
     try {
@@ -332,21 +418,34 @@ export default function InterviewPage() {
           }
 
           let fullFinal = finalChunks.join(' ').trim();
-          let combined = '';
+          let combinedSession = '';
 
           if (latestInterim) {
             if (fullFinal && latestInterim.toLowerCase().startsWith(fullFinal.toLowerCase())) {
-              combined = latestInterim;
+              combinedSession = latestInterim;
             } else if (fullFinal && fullFinal.toLowerCase().startsWith(latestInterim.toLowerCase())) {
-              combined = fullFinal;
+              combinedSession = fullFinal;
             } else {
-              combined = `${fullFinal} ${latestInterim}`.trim();
+              combinedSession = `${fullFinal} ${latestInterim}`.trim();
             }
           } else {
-            combined = fullFinal;
+            combinedSession = fullFinal;
           }
 
-          const cleanPreview = deduplicateText(combined);
+          currentSessionTranscriptRef.current = combinedSession;
+
+          const history = finalSavedTranscriptRef.current.trim();
+          let fullText = history;
+
+          if (combinedSession) {
+            if (history && combinedSession.toLowerCase().startsWith(history.toLowerCase())) {
+              fullText = combinedSession;
+            } else if (!history.toLowerCase().endsWith(combinedSession.toLowerCase())) {
+              fullText = `${history} ${combinedSession}`.trim();
+            }
+          }
+
+          const cleanPreview = deduplicateText(fullText);
           transcriptRef.current = cleanPreview;
           setLiveTranscript(cleanPreview);
           setInput(cleanPreview);
@@ -359,6 +458,17 @@ export default function InterviewPage() {
         };
 
         recognition.onend = () => {
+          if (currentSessionTranscriptRef.current) {
+            const prevHistory = finalSavedTranscriptRef.current.trim();
+            const sessionText = currentSessionTranscriptRef.current.trim();
+            if (prevHistory && sessionText.toLowerCase().startsWith(prevHistory.toLowerCase())) {
+              finalSavedTranscriptRef.current = sessionText;
+            } else if (!prevHistory.toLowerCase().endsWith(sessionText.toLowerCase())) {
+              finalSavedTranscriptRef.current = `${prevHistory} ${sessionText}`.trim();
+            }
+            currentSessionTranscriptRef.current = '';
+          }
+
           if (isUserRecordingRef.current) {
             try {
               recognition.start();
@@ -666,6 +776,138 @@ export default function InterviewPage() {
           </div>
         </div>
       </div>
+
+      {showScreenPrompt && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="netflix-card rounded-3xl max-w-md w-full p-6 text-center border border-red-500/30 shadow-[0_0_50px_rgba(229,9,20,0.25)] relative">
+            <button
+              onClick={() => setShowScreenPrompt(false)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="w-14 h-14 rounded-2xl bg-[#E50914]/15 border border-[#E50914]/30 text-[#E50914] flex items-center justify-center mx-auto mb-4">
+              <Monitor className="w-7 h-7" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2" style={{ fontFamily: 'Outfit' }}>
+              Screen Recording Request
+            </h3>
+            <p className="text-gray-300 text-xs leading-relaxed mb-6">
+              Start screen recording to capture your entire mock interview video. You can preview, download, and share your recorded interview on socials after the session!
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => setShowScreenPrompt(false)}
+                className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/15 font-semibold text-xs text-gray-300 transition"
+              >
+                Skip Recording
+              </button>
+              <button
+                onClick={requestScreenRecording}
+                className="netflix-btn-red flex-1 py-3 rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-2"
+              >
+                <Monitor className="w-4 h-4" /> Start Screen Record
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="netflix-card rounded-3xl max-w-xl w-full p-6 text-center border border-[#E50914]/40 shadow-[0_0_60px_rgba(229,9,20,0.3)] relative my-8">
+            {/* Top Right Cross Button */}
+            <button
+              onClick={handleProceedToReport}
+              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition"
+              title="Close and Proceed to Report"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-7 h-7" />
+            </div>
+
+            <h3 className="text-2xl font-bold text-white mb-1" style={{ fontFamily: 'Outfit' }}>
+              Interview Complete! 🎉
+            </h3>
+            <p className="text-xs text-gray-300 mb-5">
+              Your mock interview has been recorded. Review your video, download the session, or share your achievement on socials!
+            </p>
+
+            {/* Video Player Preview if Screen Recorded */}
+            {screenRecordingUrl ? (
+              <div className="mb-6 space-y-3">
+                <div className="rounded-2xl overflow-hidden border border-white/15 bg-black shadow-inner">
+                  <video src={screenRecordingUrl} controls className="w-full max-h-56 object-contain" />
+                </div>
+                <a
+                  href={screenRecordingUrl}
+                  download={`KevinAI_Interview_${interviewId}.webm`}
+                  className="netflix-btn-red py-3 px-5 rounded-xl text-xs font-bold inline-flex items-center gap-2 shadow-lg"
+                >
+                  <Download className="w-4 h-4" /> Download Interview Video (.webm)
+                </a>
+              </div>
+            ) : (
+              <div className="p-4 mb-6 rounded-2xl bg-white/5 border border-white/10 text-xs text-gray-400">
+                <p>No video screen recording was captured for this session.</p>
+              </div>
+            )}
+
+            {/* Social Share Section */}
+            <div className="netflix-card p-5 rounded-2xl border border-white/10 text-left mb-6 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-gray-200">
+                <Share2 className="w-4 h-4 text-[#E50914]" />
+                <span>Share your Kevin AI Interview on Socials:</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-semibold">
+                <a
+                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent("I just completed a live AI Mock Interview with Kevin AI at https://www.kevinhr.in! Check it out to practice your tech interviews!")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="py-2.5 px-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-center transition truncate"
+                >
+                  WhatsApp
+                </a>
+                <a
+                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent("https://www.kevinhr.in")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="py-2.5 px-3 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-center transition truncate"
+                >
+                  LinkedIn
+                </a>
+                <a
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent("https://www.kevinhr.in")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="py-2.5 px-3 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 text-center transition truncate"
+                >
+                  Facebook
+                </a>
+                <button
+                  onClick={handleCopyShareLink}
+                  className="py-2.5 px-3 rounded-xl bg-pink-600/20 hover:bg-pink-600/30 text-pink-400 border border-pink-500/30 flex items-center justify-center gap-1.5 transition truncate"
+                >
+                  {linkCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{linkCopied ? "Copied!" : "Instagram / Copy"}</span>
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={handleProceedToReport}
+              className="netflix-btn-red w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(229,9,20,0.4)]"
+            >
+              <span>View Detailed Evaluation Report</span>
+              <Sparkles className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes wave { from { height: 6px; } to { height: 32px; } }
