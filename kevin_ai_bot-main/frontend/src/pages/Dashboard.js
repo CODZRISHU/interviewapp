@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Play, Upload, FileText, BarChart3, Clock, ChevronRight, Sparkles, CreditCard, Award, ShieldAlert, MessageSquare } from 'lucide-react';
+import { Play, Upload, FileText, BarChart3, Clock, ChevronRight, Sparkles, CreditCard, Award, ShieldAlert, MessageSquare, Gift, Users, Share2, Copy, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import FreeTrialFeedbackModal from '../components/FreeTrialFeedbackModal';
 import { api } from '../services/api';
+import { toast } from 'sonner';
 
 const maxVal = (val, fallback) => (val && val > 0 ? val : fallback);
 
@@ -148,15 +149,11 @@ export default function Dashboard() {
       {(() => {
         const mainBuckets = user?.entitlements?.mainCreditBuckets || user?.mainCreditBuckets || {};
         const topupBuckets = user?.entitlements?.topupCreditBuckets || user?.topupCreditBuckets || {};
-        const combined = user?.entitlements?.creditBuckets || user?.creditBuckets || {};
-
         const m10 = mainBuckets["10m"] || {};
         const m15 = mainBuckets["15m"] || {};
         const m30 = mainBuckets["30m"] || {};
-
         const t10 = topupBuckets["10m"] || {};
         const t15 = topupBuckets["15m"] || {};
-
         const topupEligibility = user?.entitlements?.topupEligibility || {
           eligible: false,
           scenario: "D",
@@ -178,17 +175,18 @@ export default function Dashboard() {
                     user?.planKey === "premium_199" ? "bg-amber-500/20 border border-amber-500/40 text-amber-300" :
                     user?.planKey === "basic_99" ? "bg-blue-500/20 border border-blue-500/40 text-blue-300" : "bg-gray-500/20 border border-gray-500/40 text-gray-300"
                   }`}>
-                    {user?.planKey === "premium_199" ? "Premium Plan (₹199)" :
-                     user?.planKey === "basic_99" ? "Basic Plan (₹99)" : "Free Trial"}
+                    {user?.planKey === "premium_199" ? "PRO CANDIDATE (₹199)" :
+                     user?.planKey === "basic_99" ? "STARTER (₹99)" : "FREE TRIAL"}
                   </span>
                 </div>
 
-                {/* Main Plan Credit Progress Bars */}
-                <div>
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                    Main Plan Credits
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    <span>Main Subscription Allocations</span>
+                    <span className="text-white">{user?.creditsRemaining ?? 0} Credits Left</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="p-4 rounded-2xl bg-black/40 border border-white/10">
                       <div className="flex justify-between text-xs font-medium text-gray-300 mb-2">
                         <span>10-Minute Interviews</span>
@@ -198,7 +196,7 @@ export default function Dashboard() {
                       </div>
                       <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-red-600 to-[#E50914] transition-all duration-500"
+                          className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all duration-500"
                           style={{
                             width: `${Math.min(((m10.remaining ?? 0) / maxVal(m10.total, 1)) * 100, 100)}%`,
                           }}
@@ -242,7 +240,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Top-Up Credits & Status */}
                 <div className="pt-2">
                   <div className="flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
                     <span>Top-Up Credits & Eligibility</span>
@@ -297,7 +294,7 @@ export default function Dashboard() {
         );
       })()}
 
-      {/* Main Action Cards */}
+      {/* Main Action Cards (Resume Upload / Reports / Profile) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <button
           data-testid="upload-resume-btn"
@@ -335,6 +332,97 @@ export default function Dashboard() {
           <h3 className="text-lg font-bold mb-1 text-white" style={{ fontFamily: 'Outfit' }}>Profile & Resume Skills</h3>
           <p className="text-xs text-gray-400">View extracted skills & experience</p>
         </button>
+      </div>
+
+      {/* Referral System Banner Card (Positioned Above Recent Evaluations) */}
+      <div className="netflix-card rounded-3xl p-6 md:p-8 border border-red-500/30 relative overflow-hidden space-y-5 shadow-[0_0_40px_rgba(229,9,20,0.15)]">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+          <div className="space-y-2 flex-1">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E50914]/20 border border-[#E50914]/40">
+              <Gift className="w-3.5 h-3.5 text-[#E50914]" />
+              <span className="text-xs font-bold uppercase tracking-wider text-red-200">Refer & Earn Free Interviews</span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold text-white" style={{ fontFamily: 'Outfit' }}>
+              Refer 3 Friends ➔ Get <span className="text-[#E50914]">1 FREE 10-Min Interview</span>
+            </h2>
+            <p className="text-gray-300 text-xs md:text-sm leading-relaxed max-w-2xl">
+              Share your unique referral link with friends or fellow candidates. For every <b>3 friends</b> who sign up, you automatically receive <b>1 FREE 10-Minute Mock Interview</b> — even on free accounts!
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 bg-black/40 border border-white/10 p-4 rounded-2xl shrink-0">
+            <div className="text-center px-3 border-r border-white/10">
+              <span className="text-xs text-gray-400 block mb-0.5">Friends Referred</span>
+              <span className="text-2xl font-black text-white">{user?.referralCount || 0}</span>
+            </div>
+            <div className="text-center px-3">
+              <span className="text-xs text-gray-400 block mb-0.5">Free Sessions Earned</span>
+              <span className="text-2xl font-black text-[#E50914]">{user?.referralRewardsClaimed || 0}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Progress Bar towards Next Free Interview */}
+        <div className="space-y-2 relative z-10 bg-white/5 p-4 rounded-2xl border border-white/10">
+          <div className="flex items-center justify-between text-xs font-semibold">
+            <span className="text-gray-300 flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-[#E50914]" /> Progress to Next Free Interview:
+            </span>
+            <span className="text-[#E50914] font-bold">
+              {(user?.referralCount || 0) % 3} / 3 Referrals
+            </span>
+          </div>
+          <div className="w-full h-2.5 bg-black/60 rounded-full overflow-hidden border border-white/10">
+            <div
+              className="h-full bg-gradient-to-r from-red-600 to-[#E50914] shadow-[0_0_10px_#E50914] transition-all duration-500"
+              style={{ width: `${(((user?.referralCount || 0) % 3) / 3) * 100}%` }}
+            />
+          </div>
+          <p className="text-[11px] text-gray-400">
+            {(user?.referralCount || 0) % 3 === 2
+              ? "⚡ Only 1 more referral needed to unlock your free 10-minute mock interview!"
+              : "Refer 3 friends to earn your next free interview!"}
+          </p>
+        </div>
+
+        {/* Share Link & Buttons */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 relative z-10">
+          <div className="flex-1 w-full bg-black/60 border border-white/15 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
+            <span className="text-xs font-mono text-gray-300 truncate">
+              {`https://www.kevinhr.in/auth?ref=${user?.referralCode || 'REF'}`}
+            </span>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`https://www.kevinhr.in/auth?ref=${user?.referralCode || ''}`);
+                toast.success("Referral link copied to clipboard!");
+              }}
+              className="netflix-btn-red py-1.5 px-3 rounded-lg text-xs font-bold flex items-center gap-1.5 shrink-0"
+            >
+              <Copy className="w-3.5 h-3.5" /> Copy Link
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <a
+              href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Hey! Practice real-time AI mock tech interviews with Kevin AI. Sign up using my referral link: https://www.kevinhr.in/auth?ref=${user?.referralCode || ''}`)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="py-2.5 px-4 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition flex items-center gap-1.5 flex-1 sm:flex-initial justify-center"
+            >
+              <Share2 className="w-3.5 h-3.5" /> WhatsApp
+            </a>
+            <a
+              href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`https://www.kevinhr.in/auth?ref=${user?.referralCode || ''}`)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="py-2.5 px-4 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs font-bold transition flex items-center gap-1.5 flex-1 sm:flex-initial justify-center"
+            >
+              <Share2 className="w-3.5 h-3.5" /> LinkedIn
+            </a>
+          </div>
+        </div>
       </div>
 
       {/* Recent Interview Evaluations */}

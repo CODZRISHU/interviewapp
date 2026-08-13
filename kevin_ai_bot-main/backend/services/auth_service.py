@@ -1,4 +1,5 @@
 from datetime import timezone
+from typing import Optional
 
 from fastapi import HTTPException, status
 from google.auth.transport import requests as google_requests
@@ -60,6 +61,9 @@ def serialize_user(document: dict) -> UserResponse:
         resumeFilename=document.get("resumeFilename", ""),
         resumeText=document.get("resumeText", ""),
         entitlements=entitlements,
+        referralCode=document.get("referralCode") or "",
+        referralCount=int(document.get("referralCount", 0)),
+        referralRewardsClaimed=int(document.get("referralRewardsClaimed", 0)),
     )
 
 
@@ -84,6 +88,61 @@ async def build_auth_response(user_document: dict) -> AuthResponse:
             expires_in=int((access_expiry - utc_now()).total_seconds()),
         ),
     )
+
+
+async def process_referral_reward(new_user_id: str, referral_code: str):
+    if not referral_code or not referral_code.strip():
+        return
+
+    code = referral_code.strip().upper()
+    referrer = await database.users.find_one({"referralCode": code})
+
+    if not referrer or referrer.get("id") == new_user_id:
+        return
+
+    await database.users.update_one({"id": new_user_id}, {"$set": {"referredBy": referrer["id"]}})
+
+    new_count = int(referrer.get("referralCount", 0)) + 1
+    claimed = int(referrer.get("referralRewardsClaimed", 0))
+    rewards_due = (new_count // 3) - claimed
+
+    update_fields = {"referralCount": new_count}
+
+    if rewards_due > 0:
+        claimed += rewards_due
+        update_fields["referralRewardsClaimed"] = claimed
+
+        credits_remaining = int(referrer.get("creditsRemaining", 0)) + rewards_due
+        total_credits = int(referrer.get("totalCredits", 0)) + rewards_due
+
+        buckets = referrer.get("creditBuckets") or {
+            "10m": {"total": 0, "used": 0, "remaining": 0},
+            "15m": {"total": 0, "used": 0, "remaining": 0},
+            "30m": {"total": 0, "used": 0, "remaining": 0}
+        }
+        m10 = buckets.get("10m") or {"total": 0, "used": 0, "remaining": 0}
+        m10["remaining"] = int(m10.get("remaining", 0)) + rewards_due
+        m10["total"] = int(m10.get("total", 0)) + rewards_due
+        buckets["10m"] = m10
+
+        update_fields["creditsRemaining"] = credits_remaining
+        update_fields["totalCredits"] = total_credits
+        update_fields["creditBuckets"] = buckets
+        update_fields["billingStatus"] = "trial_available"
+
+        await database.referral_rewards.insert_one({
+            "id": f"refreward_{uuid.uuid4().hex[:8]}",
+            "referrerId": referrer["id"],
+            "referredUserId": new_user_id,
+            "rewardType": "10min_interview",
+            "createdAt": utc_now()
+        })
+
+    await database.users.update_one({"id": referrer["id"]}, {"$set": update_fields})
+
+
+def _generate_referral_code() -> str:
+    return f"REF-{uuid.uuid4().hex[:6].upper()}"
 
 
 def _new_user_document(name: str, email: str, password, auth_provider: str) -> dict:
@@ -111,6 +170,12 @@ def _new_user_document(name: str, email: str, password, auth_provider: str) -> d
             "30m": {"total": 0, "used": 0, "remaining": 0},
         },
         "trialUsed": False,
+        "referralCode": _generate_referral_code(),
+        "referredBy": None,
+        "pendingReferralCode": None,
+        "referralRewardProcessed": False,
+        "referralCount": 0,
+        "referralRewardsClaimed": 0,
 
         "bonusCreditsBalance": 0,
         "subscriptionEnd": None,
@@ -146,6 +211,9 @@ async def register_user(payload: RegisterRequest) -> AuthResponse:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account already exists for this email.")
 
     user_document = _new_user_document(payload.name, email, hash_password(payload.password), "email")
+    if payload.referral_code:
+        user_document["pendingReferralCode"] = payload.referral_code.strip().upper()
+
     await database.users.insert_one(user_document)
 
     token = user_document.get("verificationToken")
@@ -189,6 +257,12 @@ async def verify_email_token(token: str) -> AuthResponse:
     )
     user["isEmailVerified"] = True
     user["verificationToken"] = None
+
+    # ONLY process referral reward AFTER email verification!
+    pending_code = user.get("pendingReferralCode")
+    if pending_code and not user.get("referralRewardProcessed"):
+        await process_referral_reward(user["id"], pending_code)
+        await database.users.update_one({"id": user["id"]}, {"$set": {"referralRewardProcessed": True}})
 
     auth_resp = await build_auth_response(user)
     auth_resp.message = "Gmail address verified successfully! Logging you in..."
@@ -237,7 +311,7 @@ async def refresh_access_token(refresh_token: str) -> TokenPair:
     )
 
 
-async def authenticate_google(id_token_value: str) -> AuthResponse:
+async def authenticate_google(id_token_value: str, referral_code: Optional[str] = None) -> AuthResponse:
     if not settings.google_client_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Google OAuth is not configured.")
     try:
@@ -250,6 +324,9 @@ async def authenticate_google(id_token_value: str) -> AuthResponse:
     if not user_document:
         user_document = _new_user_document(token_info.get("name") or email.split("@")[0], email, None, "google")
         await database.users.insert_one(user_document)
+        if referral_code:
+            await process_referral_reward(user_document["id"], referral_code)
+            await database.users.update_one({"id": user_document["id"]}, {"$set": {"referralRewardProcessed": True}})
 
     return await build_auth_response(user_document)
 

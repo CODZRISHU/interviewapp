@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2, Lock, Mail, User, Sparkles } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -30,6 +30,14 @@ export default function EmailAuthPage() {
     }
   };
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref') || params.get('referralCode');
+    if (ref) {
+      localStorage.setItem('kevin_referral_code', ref.trim().toUpperCase());
+    }
+  }, []);
+
   const submit = async (event) => {
     event.preventDefault();
     setSubmitting(true);
@@ -44,8 +52,12 @@ export default function EmailAuthPage() {
 
     try {
       const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
-      const payload = mode === "login" ? { email: form.email, password: form.password } : form;
+      const refCode = localStorage.getItem('kevin_referral_code') || undefined;
+      const payload = mode === "login" 
+        ? { email: form.email, password: form.password } 
+        : { ...form, referral_code: refCode };
       const response = await api.post(endpoint, payload);
+      if (mode === "register" && refCode) localStorage.removeItem('kevin_referral_code');
 
       if (response.data?.requiresVerification) {
         setSuccessMsg(response.data.message || "Registration successful! A verification link has been sent to your Gmail inbox. Please click the link to activate your account.");

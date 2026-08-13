@@ -22,6 +22,14 @@ export default function AuthPage() {
   );
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref') || params.get('referralCode');
+    if (ref) {
+      localStorage.setItem('kevin_referral_code', ref.trim().toUpperCase());
+    }
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
     const loadConfig = async () => {
       try {
@@ -60,7 +68,12 @@ export default function AuthPage() {
           setSubmitting(true);
           setError("");
           try {
-            const authResponse = await api.post("/auth/google", { id_token: response.credential });
+            const refCode = localStorage.getItem('kevin_referral_code') || undefined;
+            const authResponse = await api.post("/auth/google", {
+              id_token: response.credential,
+              referral_code: refCode
+            });
+            if (refCode) localStorage.removeItem('kevin_referral_code');
             login(authResponse.data);
             navigate("/dashboard", { replace: true });
           } catch (requestError) {
