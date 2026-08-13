@@ -115,19 +115,30 @@ async def process_referral_reward(new_user_id: str, referral_code: str):
         credits_remaining = int(referrer.get("creditsRemaining", 0)) + rewards_due
         total_credits = int(referrer.get("totalCredits", 0)) + rewards_due
 
-        buckets = referrer.get("creditBuckets") or {
-            "10m": {"total": 0, "used": 0, "remaining": 0},
+        main_b = referrer.get("mainCreditBuckets") or {
+            "10m": {"total": 1, "used": 1, "remaining": 0},
             "15m": {"total": 0, "used": 0, "remaining": 0},
             "30m": {"total": 0, "used": 0, "remaining": 0}
         }
-        m10 = buckets.get("10m") or {"total": 0, "used": 0, "remaining": 0}
+        m10 = main_b.get("10m") or {"total": 1, "used": 1, "remaining": 0}
         m10["remaining"] = int(m10.get("remaining", 0)) + rewards_due
         m10["total"] = int(m10.get("total", 0)) + rewards_due
-        buckets["10m"] = m10
+        main_b["10m"] = m10
+
+        comb_b = referrer.get("creditBuckets") or {
+            "10m": {"total": 1, "used": 1, "remaining": 0},
+            "15m": {"total": 0, "used": 0, "remaining": 0},
+            "30m": {"total": 0, "used": 0, "remaining": 0}
+        }
+        c10 = comb_b.get("10m") or {"total": 1, "used": 1, "remaining": 0}
+        c10["remaining"] = int(c10.get("remaining", 0)) + rewards_due
+        c10["total"] = int(c10.get("total", 0)) + rewards_due
+        comb_b["10m"] = c10
 
         update_fields["creditsRemaining"] = credits_remaining
         update_fields["totalCredits"] = total_credits
-        update_fields["creditBuckets"] = buckets
+        update_fields["mainCreditBuckets"] = main_b
+        update_fields["creditBuckets"] = comb_b
         update_fields["billingStatus"] = "trial_available"
 
         await database.referral_rewards.insert_one({

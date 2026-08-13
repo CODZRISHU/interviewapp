@@ -331,6 +331,8 @@ def _default_credit_fields() -> dict:
         "cancelAtPeriodEnd": False,
         "fairUsagePolicy": True,
         "feedbackSubmitted": False,
+        "referralRewardsClaimed": 0,
+        "referralCount": 0,
     }
 
 
@@ -348,7 +350,12 @@ def normalize_user_billing_document(user: dict) -> dict:
     total_combined_used = 0
     total_combined_capacity = 0
 
-    is_expired_or_trial_used = result.get("billingStatus") in {"expired", "trial_used"} or (result.get("planKey") == "free_trial" and result.get("trialUsed"))
+    has_referral_rewards = int(result.get("referralRewardsClaimed", 0)) > 0 or int(user.get("referralRewardsClaimed", 0)) > 0 or int(result.get("creditsRemaining", 0)) > 0
+    is_expired_or_trial_used = (
+        result.get("billingStatus") in {"expired"}
+        or (result.get("billingStatus") == "trial_used" and not has_referral_rewards and result.get("creditsRemaining", 0) <= 0)
+        or (result.get("planKey") == "free_trial" and result.get("trialUsed") and not has_referral_rewards and result.get("creditsRemaining", 0) <= 0)
+    )
 
     for b in ("10m", "15m", "30m"):
         if b not in result["mainCreditBuckets"]:
@@ -371,26 +378,29 @@ def normalize_user_billing_document(user: dict) -> dict:
         total_combined_used += used
         total_combined_remaining += rem
 
-    if result.get("planKey") == "free_trial" and result.get("trialUsed"):
+    if result.get("planKey") == "free_trial" and result.get("trialUsed") and not has_referral_rewards and total_combined_remaining <= 0:
         result["mainCreditBuckets"]["10m"] = {"total": 1, "used": 1, "remaining": 0}
         result["creditBuckets"]["10m"] = {"total": 1, "used": 1, "remaining": 0}
         result["totalCredits"] = 1
         result["creditsUsed"] = 1
         result["creditsRemaining"] = 0
-
-    result["creditBuckets"] = combined_buckets
-    result["totalCredits"] = total_combined_capacity if not (result.get("planKey") == "free_trial" and result.get("trialUsed")) else 1
-    result["creditsUsed"] = total_combined_used if not (result.get("planKey") == "free_trial" and result.get("trialUsed")) else 1
-    result["creditsRemaining"] = total_combined_remaining if not (result.get("planKey") == "free_trial" and result.get("trialUsed")) else 0
+    else:
+        result["creditBuckets"] = combined_buckets
+        result["totalCredits"] = total_combined_capacity
+        result["creditsUsed"] = total_combined_used
+        result["creditsRemaining"] = total_combined_remaining
     return result
 
 
 def _plan_status_for_user(user: dict) -> str:
-    if user.get("planKey") == "free_trial" and user.get("trialUsed"):
+    has_referral = int(user.get("referralRewardsClaimed", 0)) > 0 or user.get("creditsRemaining", 0) > 0
+    if user.get("planKey") == "free_trial" and user.get("trialUsed") and not has_referral:
         return "trial_used"
-    if user.get("billingStatus") in BILLING_STATUSES:
+    if user.get("billingStatus") in BILLING_STATUSES and user.get("billingStatus") != "trial_used":
         return user["billingStatus"]
-    return "trial_used" if user.get("trialUsed") else "trial_available"
+    if has_referral:
+        return "trial_available"
+    return "trial_used" if (user.get("trialUsed") and not has_referral) else "trial_available"
 
 
 def check_topup_eligibility(user: dict) -> dict:
@@ -481,7 +491,8 @@ async def reconcile_user_billing_state(user: dict) -> dict:
                     }
                 )
 
-    if snapshot["planKey"] == "free_trial" and (snapshot["trialUsed"] or snapshot["creditsRemaining"] <= 0):
+    has_ref = int(snapshot.get("referralRewardsClaimed", 0)) > 0 or snapshot.get("creditsRemaining", 0) > 0
+    if snapshot["planKey"] == "free_trial" and snapshot["trialUsed"] and not has_ref and snapshot.get("creditsRemaining", 0) <= 0:
         status_value = "trial_used"
         trial_zero_buckets = {
             "10m": {"total": 1, "used": 1, "remaining": 0},
@@ -833,13 +844,14 @@ async def ensure_interview_access(user: dict, duration_minutes: int) -> tuple[di
 
     # 1. Zero Bypass: Subscription status check
     status_val = _plan_status_for_user(user)
-    if (user.get("planKey") == "free_trial" or user.get("plan") == "free") and (user.get("trialUsed") or status_val == "trial_used" or user.get("creditsRemaining", 0) <= 0):
+    has_referral_credits = user.get("creditsRemaining", 0) > 0 or int(user.get("referralRewardsClaimed", 0)) > 0
+    if (user.get("planKey") == "free_trial" or user.get("plan") == "free") and not has_referral_credits and user.get("creditsRemaining", 0) <= 0:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Your free trial attempt has already been used. Please subscribe to a plan to start a new interview.",
         )
 
-    if status_val in {"expired", "trial_used"} and user.get("creditsRemaining", 0) <= 0:
+    if status_val in {"expired", "trial_used"} and not has_referral_credits and user.get("creditsRemaining", 0) <= 0:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Your subscription has expired or credits are exhausted. Please upgrade to continue.",
@@ -850,8 +862,9 @@ async def ensure_interview_access(user: dict, duration_minutes: int) -> tuple[di
 
     main_b = (user.get("mainCreditBuckets") or {}).get(bucket_key, {"remaining": 0})
     topup_b = (user.get("topupCreditBuckets") or {}).get(bucket_key, {"remaining": 0})
+    comb_b = (user.get("creditBuckets") or {}).get(bucket_key, {"remaining": 0})
 
-    if main_b.get("remaining", 0) <= 0 and topup_b.get("remaining", 0) <= 0:
+    if main_b.get("remaining", 0) <= 0 and topup_b.get("remaining", 0) <= 0 and comb_b.get("remaining", 0) <= 0:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"No credits available for {duration_minutes}-minute interviews on your current plan. Please recharge or upgrade.",
