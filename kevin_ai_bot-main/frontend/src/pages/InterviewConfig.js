@@ -35,7 +35,7 @@ export default function InterviewConfig() {
     interview_type: 'mixed',
     level: 'fresher',
     role: 'Software Engineer',
-    duration: 15,
+    duration: 10,
   });
   const [starting, setStarting] = useState(false);
   const [customRole, setCustomRole] = useState('');
@@ -44,7 +44,10 @@ export default function InterviewConfig() {
   const [upgradeErrorMsg, setUpgradeErrorMsg] = useState('');
   const [showMobileWarningModal, setShowMobileWarningModal] = useState(false);
 
-  const isFreeTrialUsed = (user?.planKey === "free_trial" || user?.plan === "free") && (user?.trialUsed || user?.billingStatus === "trial_used" || (user?.creditsRemaining ?? 0) <= 0);
+  const hasCreditsOrEntitlement = (user?.creditsRemaining ?? 0) > 0 || user?.canStartInterview || (user?.referralRewardsClaimed ?? 0) > 0;
+  const isFreeTrialUsed = (user?.planKey === "free_trial" || user?.plan === "free") 
+    && !hasCreditsOrEntitlement 
+    && (user?.trialUsed || user?.billingStatus === "trial_used");
 
   const isMobileDevice = () => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;

@@ -34,7 +34,8 @@ export default function Dashboard() {
   }, [checkAuth]);
 
   const isFeedbackAlreadyDone = user?.feedbackSubmitted || (user?.id && localStorage.getItem(`kevin-feedback-submitted-${user.id}`) === 'true');
-  const isTrialOverWithoutFeedback = (user?.billingStatus === "trial_used" || (user?.planKey === "free_trial" && user?.trialUsed)) && !isFeedbackAlreadyDone;
+  const hasUnusedCredits = (user?.creditsRemaining ?? 0) > 0 || user?.canStartInterview || (user?.referralRewardsClaimed ?? 0) > 0;
+  const isTrialOverWithoutFeedback = (user?.billingStatus === "trial_used" || (user?.planKey === "free_trial" && user?.trialUsed)) && !hasUnusedCredits && !isFeedbackAlreadyDone;
 
   React.useEffect(() => {
     if (isTrialOverWithoutFeedback) {

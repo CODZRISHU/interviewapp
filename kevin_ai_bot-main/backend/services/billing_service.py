@@ -857,18 +857,24 @@ async def ensure_interview_access(user: dict, duration_minutes: int) -> tuple[di
             detail="Your subscription has expired or credits are exhausted. Please upgrade to continue.",
         )
 
-    # 2. Check duration bucket with strict duration matching
-    bucket_key = "10m" if duration_minutes <= 10 else ("15m" if duration_minutes <= 15 else "30m")
+    # 2. Check duration bucket with strict duration matching & fallback to 10m if available
+    requested_bucket = "10m" if duration_minutes <= 10 else ("15m" if duration_minutes <= 15 else "30m")
 
-    main_b = (user.get("mainCreditBuckets") or {}).get(bucket_key, {"remaining": 0})
-    topup_b = (user.get("topupCreditBuckets") or {}).get(bucket_key, {"remaining": 0})
-    comb_b = (user.get("creditBuckets") or {}).get(bucket_key, {"remaining": 0})
+    def _bucket_rem(b_key):
+        mb = (user.get("mainCreditBuckets") or {}).get(b_key, {"remaining": 0})
+        tb = (user.get("topupCreditBuckets") or {}).get(b_key, {"remaining": 0})
+        cb = (user.get("creditBuckets") or {}).get(b_key, {"remaining": 0})
+        return mb.get("remaining", 0) + tb.get("remaining", 0) + cb.get("remaining", 0)
 
-    if main_b.get("remaining", 0) <= 0 and topup_b.get("remaining", 0) <= 0 and comb_b.get("remaining", 0) <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"No credits available for {duration_minutes}-minute interviews on your current plan. Please recharge or upgrade.",
-        )
+    bucket_key = requested_bucket
+    if _bucket_rem(bucket_key) <= 0:
+        if _bucket_rem("10m") > 0 or user.get("creditsRemaining", 0) > 0:
+            bucket_key = "10m"
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"No credits available for {duration_minutes}-minute interviews on your account. Please select a 10-minute session or refer 3 friends.",
+            )
 
     # 3. Clean up any stale active sessions for this user so starting a new interview works seamlessly
     active_interview = await database.interviews.find_one({"userId": user["id"], "status": "active"})
