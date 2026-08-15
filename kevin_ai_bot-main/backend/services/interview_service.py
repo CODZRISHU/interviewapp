@@ -71,7 +71,9 @@ async def start_interview_for_user(user: dict, config: dict) -> dict:
         "startedAt": now,
         "expiresAt": expires_at,
         "endedAt": None,
-        "creditDeducted": False,
+        "creditDeducted": True,
+        "deductedBucket": "10m" if config.get("duration", 10) <= 10 else ("15m" if config.get("duration", 10) <= 15 else "30m"),
+        "creditSource": "free_trial" if user.get("planKey") == "free_trial" else "main",
     }
     await database.interviews.insert_one(document)
     if user.get("planKey") == "free_trial":

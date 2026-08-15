@@ -895,27 +895,41 @@ async def consume_credit_for_interview(user_id: str, interview_id: str, duration
 
     now = _now()
 
-    # Free Trial users: Always mark trial used and zero out free credit regardless of duration!
+    # Check if credit was already deducted for this interview (e.g. at session launch)
+    interview = await database.interviews.find_one({"id": interview_id, "userId": user_id})
+    if interview and interview.get("creditDeducted"):
+        return {"deducted": True, "bucket": interview.get("deductedBucket", "10m"), "source": interview.get("creditSource", "free_trial"), "elapsed_seconds": elapsed_seconds}
+
+    # Free Trial users: Deduct 1 credit properly preserving remaining referral credits
     if user.get("planKey") == "free_trial":
-        zero_b = {
-            "10m": {"total": 1, "used": 1, "remaining": 0},
+        credits_rem = max(int(user.get("creditsRemaining", 1)) - 1, 0)
+        has_ref = int(user.get("referralRewardsClaimed", 0)) > 0 or credits_rem > 0
+
+        main_b = user.get("mainCreditBuckets") or {}
+        comb_b = user.get("creditBuckets") or {}
+        m10 = main_b.get("10m") or comb_b.get("10m") or {"total": 1, "used": 0, "remaining": 1}
+
+        m10_tot = max(int(m10.get("total", 1)), 1)
+        m10_used = int(m10.get("used", 0)) + 1
+        m10_rem = max(int(m10.get("remaining", 1)) - 1, 0)
+
+        new_b = {
+            "10m": {"total": m10_tot, "used": m10_used, "remaining": m10_rem},
             "15m": {"total": 0, "used": 0, "remaining": 0},
             "30m": {"total": 0, "used": 0, "remaining": 0},
         }
-        await database.users.update_one(
-            {"id": user_id},
-            {
-                "$set": {
-                    "trialUsed": True,
-                    "billingStatus": "trial_used",
-                    "mainCreditBuckets": zero_b,
-                    "creditBuckets": zero_b,
-                    "totalCredits": 1,
-                    "creditsUsed": 1,
-                    "creditsRemaining": 0,
-                }
-            },
-        )
+
+        set_fields = {
+            "trialUsed": True,
+            "mainCreditBuckets": new_b,
+            "creditBuckets": new_b,
+            "creditsUsed": int(user.get("creditsUsed", 0)) + 1,
+            "creditsRemaining": credits_rem,
+        }
+        if credits_rem == 0 and not has_ref:
+            set_fields["billingStatus"] = "trial_used"
+
+        await database.users.update_one({"id": user_id}, {"$set": set_fields})
         await database.interviews.update_one(
             {"id": interview_id},
             {"$set": {"creditDeducted": True, "deductedBucket": "10m", "creditSource": "free_trial", "deductedAt": now}}
@@ -925,10 +939,8 @@ async def consume_credit_for_interview(user_id: str, interview_id: str, duration
     if elapsed_seconds < 120:
         return {"deducted": False, "reason": "duration_under_2_minutes", "elapsed_seconds": elapsed_seconds}
 
-    # Ensure atomic deduction once per interview for paid plans
-    interview = await database.interviews.find_one({"id": interview_id, "userId": user_id})
-    if not interview or interview.get("creditDeducted"):
-        return {"deducted": False, "reason": "already_deducted_or_not_found"}
+    if not interview:
+        return {"deducted": False, "reason": "interview_not_found"}
 
     bucket_key = "10m" if duration_minutes <= 10 else ("15m" if duration_minutes <= 15 else "30m")
     user = normalize_user_billing_document(user)

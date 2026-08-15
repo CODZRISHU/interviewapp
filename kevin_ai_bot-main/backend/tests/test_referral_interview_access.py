@@ -49,6 +49,7 @@ async def test_referral_credit_playback():
     user["referralCount"] = 2
     await database.users.update_one({"id": user["id"]}, {"$set": {"referralCount": 2}})
 
+    await database.users.delete_one({"id": "user_ref_333"})
     ref3_doc = _new_user_document("Ref 3", "ref3@testrefaccess.com", "hash", "email")
     ref3_doc["id"] = "user_ref_333"
     await database.users.insert_one(ref3_doc)
