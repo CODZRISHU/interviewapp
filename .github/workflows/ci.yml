@@ -49,6 +49,9 @@ jobs:
       - name: Run Pytest Test Suite
         env:
           PYTHONPATH: .
+          MONGO_URL: mongodb://localhost:27017/kevin_ai_ci_test
+          JWT_SECRET_KEY: ci-test-jwt-secret-key-for-pytest-execution-12345
+          JWT_REFRESH_SECRET_KEY: ci-test-jwt-refresh-secret-key-for-pytest-execution-12345
         run: python -m pytest tests/ -v
 
   frontend:

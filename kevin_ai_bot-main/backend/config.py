@@ -11,10 +11,10 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
     environment: str = "development"
     debug: bool = False
-    mongo_url: str = Field(..., alias="MONGO_URL")
+    mongo_url: str = Field(default="mongodb://localhost:27017/kevin_ai", alias="MONGO_URL")
     db_name: str = Field("kevin_ai", alias="DB_NAME")
-    jwt_secret_key: str = Field(..., alias="JWT_SECRET_KEY")
-    jwt_refresh_secret_key: str = Field(..., alias="JWT_REFRESH_SECRET_KEY")
+    jwt_secret_key: str = Field(default="local-dev-jwt-secret-change-me-1234567890", alias="JWT_SECRET_KEY")
+    jwt_refresh_secret_key: str = Field(default="local-dev-refresh-secret-change-me-1234567890", alias="JWT_REFRESH_SECRET_KEY")
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
