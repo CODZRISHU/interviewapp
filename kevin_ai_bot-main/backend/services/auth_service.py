@@ -112,29 +112,19 @@ async def process_referral_reward(new_user_id: str, referral_code: str):
         claimed += rewards_due
         update_fields["referralRewardsClaimed"] = claimed
 
-        raw_usage = referrer.get("usageCount")
-        if raw_usage is not None and int(raw_usage) > 0:
-            credits_used = int(raw_usage)
-        elif bool(referrer.get("trialUsed", False)):
-            credits_used = max(int(referrer.get("creditsUsed", 1)), 1)
-        else:
-            credits_used = 0
+        # Merge update_fields with referrer document and normalize billing state
+        temp_merged = {**referrer, **update_fields}
+        norm = normalize_user_billing_document(temp_merged)
 
-        total_credits = 1 + claimed
-        credits_remaining = max(total_credits - credits_used, 0)
+        update_fields["creditBuckets"] = norm["creditBuckets"]
+        update_fields["mainCreditBuckets"] = norm["mainCreditBuckets"]
+        update_fields["totalCredits"] = norm["totalCredits"]
+        update_fields["creditsUsed"] = norm["creditsUsed"]
+        update_fields["creditsRemaining"] = norm["creditsRemaining"]
+        update_fields["referralRewardsRemaining"] = norm["referralRewardsRemaining"]
 
-        main_b = {
-            "10m": {"total": total_credits, "used": credits_used, "remaining": credits_remaining},
-            "15m": {"total": 0, "used": 0, "remaining": 0},
-            "30m": {"total": 0, "used": 0, "remaining": 0}
-        }
-
-        update_fields["creditsUsed"] = credits_used
-        update_fields["creditsRemaining"] = credits_remaining
-        update_fields["totalCredits"] = total_credits
-        update_fields["mainCreditBuckets"] = main_b
-        update_fields["creditBuckets"] = main_b
-        update_fields["billingStatus"] = "trial_available"
+        if referrer.get("planKey") == "free_trial":
+            update_fields["billingStatus"] = "trial_available"
 
         await database.referral_rewards.insert_one({
             "id": f"refreward_{uuid.uuid4().hex[:8]}",

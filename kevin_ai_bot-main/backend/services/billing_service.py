@@ -359,8 +359,12 @@ def normalize_user_billing_document(user: dict) -> dict:
     else:
         usage_cnt = 0
 
-    trial_offset = 1 if bool(user.get("trialUsed", False)) else 0
-    ref_used = int(result.get("referralRewardsUsed", 0)) or int(user.get("referralRewardsUsed", 0)) or max(usage_cnt - trial_offset, 0)
+    if user.get("planKey") == "free_trial":
+        trial_offset = 1 if bool(user.get("trialUsed", False)) else 0
+        ref_used = int(result.get("referralRewardsUsed", 0)) or int(user.get("referralRewardsUsed", 0)) or max(usage_cnt - trial_offset, 0)
+    else:
+        ref_used = int(result.get("referralRewardsUsed", 0)) or int(user.get("referralRewardsUsed", 0))
+
     ref_remaining = max(ref_claimed - ref_used, 0)
 
     result["referralRewardsRemaining"] = ref_remaining

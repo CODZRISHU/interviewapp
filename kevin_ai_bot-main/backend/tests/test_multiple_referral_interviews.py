@@ -27,6 +27,7 @@ async def test_multiple_referral_interviews():
     user["id"] = "user_multiref_666"
     user["referralCode"] = "REF-MULTI666"
     user["trialUsed"] = True
+    user["usageCount"] = 1
     user["billingStatus"] = "trial_used"
     user["creditsRemaining"] = 0
     user["creditsUsed"] = 1
