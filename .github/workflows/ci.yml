@@ -25,6 +25,11 @@ jobs:
   backend:
     name: Backend checks & Pytest
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
     defaults:
       run:
         working-directory: kevin_ai_bot-main/backend
