@@ -350,13 +350,29 @@ def normalize_user_billing_document(user: dict) -> dict:
     total_combined_used = 0
     total_combined_capacity = 0
 
-    has_referral_rewards = int(result.get("referralRewardsClaimed", 0)) > 0 or int(user.get("referralRewardsClaimed", 0)) > 0 or int(result.get("creditsRemaining", 0)) > 0
+    ref_claimed = int(result.get("referralRewardsClaimed", 0)) or int(user.get("referralRewardsClaimed", 0))
+    raw_usage = user.get("usageCount")
+    if raw_usage is not None:
+        usage_cnt = int(raw_usage)
+    elif bool(user.get("trialUsed", False)):
+        usage_cnt = max(int(user.get("creditsUsed", 1)), 1)
+    else:
+        usage_cnt = 0
+
+    trial_offset = 1 if bool(user.get("trialUsed", False)) else 0
+    ref_used = int(result.get("referralRewardsUsed", 0)) or int(user.get("referralRewardsUsed", 0)) or max(usage_cnt - trial_offset, 0)
+    ref_remaining = max(ref_claimed - ref_used, 0)
+
+    result["referralRewardsRemaining"] = ref_remaining
+
+    has_referral_rewards = ref_remaining > 0 or ref_claimed > 0
     is_expired_or_trial_used = (
         result.get("billingStatus") in {"expired"}
         or (result.get("billingStatus") == "trial_used" and not has_referral_rewards and result.get("creditsRemaining", 0) <= 0)
         or (result.get("planKey") == "free_trial" and result.get("trialUsed") and not has_referral_rewards and result.get("creditsRemaining", 0) <= 0)
     )
 
+    combined_buckets = {}
     for b in ("10m", "15m", "30m"):
         if b not in result["mainCreditBuckets"]:
             result["mainCreditBuckets"][b] = {"total": 0, "used": 0, "remaining": 0}
@@ -369,30 +385,13 @@ def normalize_user_billing_document(user: dict) -> dict:
         m["remaining"] = 0 if is_expired_or_trial_used else max(int(m.get("total", 0)) - int(m.get("used", 0)), 0)
         t["remaining"] = 0 if is_expired_or_trial_used else max(int(t.get("total", 0)) - int(t.get("used", 0)), 0)
 
-        tot = int(m.get("total", 0)) + int(t.get("total", 0))
-        used = int(m.get("used", 0)) + int(t.get("used", 0))
-        rem = m["remaining"] + t["remaining"]
-
-        combined_buckets[b] = {"total": tot, "used": used, "remaining": rem}
-        total_combined_capacity += tot
-        total_combined_used += used
-        total_combined_remaining += rem
-
-    ref_claimed = int(result.get("referralRewardsClaimed", 0)) or int(user.get("referralRewardsClaimed", 0))
     if result.get("planKey") == "free_trial":
         tot_cap = 1 + ref_claimed
-        raw_usage = user.get("usageCount")
-        if raw_usage is not None and int(raw_usage) > 0:
-            actual_used = int(raw_usage)
-        elif bool(user.get("trialUsed", False)):
-            actual_used = max(int(user.get("creditsUsed", 1)), 1)
-        else:
-            actual_used = 0
-
+        actual_used = usage_cnt
         rem_cap = max(tot_cap - actual_used, 0)
 
         b10 = {"total": tot_cap, "used": actual_used, "remaining": rem_cap}
-        result["mainCreditBuckets"]["10m"] = b10
+        result["mainCreditBuckets"]["10m"] = {"total": 1, "used": min(actual_used, 1), "remaining": max(1 - actual_used, 0)}
         result["creditBuckets"] = {
             "10m": b10,
             "15m": {"total": 0, "used": 0, "remaining": 0},
@@ -402,10 +401,30 @@ def normalize_user_billing_document(user: dict) -> dict:
         result["creditsUsed"] = actual_used
         result["creditsRemaining"] = rem_cap
     else:
+        # Paid plan (Subscription or Topup):
+        # 10m bucket combines main_10m + topup_10m + referralRewards
+        m10 = result["mainCreditBuckets"]["10m"]
+        t10 = result["topupCreditBuckets"]["10m"]
+
+        c10_tot = int(m10.get("total", 0)) + int(t10.get("total", 0)) + ref_claimed
+        c10_used = int(m10.get("used", 0)) + int(t10.get("used", 0)) + ref_used
+        c10_rem = m10["remaining"] + t10["remaining"] + ref_remaining
+
+        combined_buckets["10m"] = {"total": c10_tot, "used": c10_used, "remaining": c10_rem}
+
+        for b in ("15m", "30m"):
+            m = result["mainCreditBuckets"][b]
+            t = result["topupCreditBuckets"][b]
+            combined_buckets[b] = {
+                "total": int(m.get("total", 0)) + int(t.get("total", 0)),
+                "used": int(m.get("used", 0)) + int(t.get("used", 0)),
+                "remaining": m["remaining"] + t["remaining"],
+            }
+
         result["creditBuckets"] = combined_buckets
-        result["totalCredits"] = total_combined_capacity
-        result["creditsUsed"] = total_combined_used
-        result["creditsRemaining"] = total_combined_remaining
+        result["totalCredits"] = sum(b["total"] for b in combined_buckets.values())
+        result["creditsUsed"] = sum(b["used"] for b in combined_buckets.values())
+        result["creditsRemaining"] = sum(b["remaining"] for b in combined_buckets.values())
     return result
 
 
@@ -1004,6 +1023,21 @@ async def consume_credit_for_interview(user_id: str, interview_id: str, duration
             },
         )
         credit_source = "topup"
+    elif bucket_key == "10m" and user.get("referralRewardsRemaining", 0) > 0:
+        update_result = await database.users.update_one(
+            {"id": user_id},
+            {
+                "$inc": {
+                    "referralRewardsUsed": 1,
+                    "creditsUsed": 1,
+                    "creditsRemaining": -1,
+                    "creditBuckets.10m.used": 1,
+                    "creditBuckets.10m.remaining": -1,
+                },
+                "$set": {"trialUsed": True},
+            },
+        )
+        credit_source = "referral"
     else:
         return {"deducted": False, "reason": "no_credit_available"}
 

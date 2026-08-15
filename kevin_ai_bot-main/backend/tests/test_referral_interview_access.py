@@ -25,6 +25,7 @@ async def test_referral_credit_playback():
     user["id"] = "user_exhausted_999"
     user["referralCode"] = "REF-PLAY999"
     user["trialUsed"] = True
+    user["usageCount"] = 1
     user["billingStatus"] = "trial_used"
     user["creditsRemaining"] = 0
     user["creditsUsed"] = 1
