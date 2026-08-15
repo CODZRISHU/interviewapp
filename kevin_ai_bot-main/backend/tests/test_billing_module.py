@@ -82,7 +82,8 @@ async def test_build_entitlements_structure():
 
 
 @pytest.mark.asyncio
-async def test_razorpay_verification_invalid_signature():
+async def test_razorpay_verification_invalid_signature(monkeypatch):
+    monkeypatch.setattr("services.billing_service.settings.razorpay_key_secret", "test_rzp_secret_key_123")
     with pytest.raises(HTTPException) as exc_info:
         await verify_razorpay_payment(
             user={"id": "u123", "name": "Razor User", "email": "test@razor.com"},
