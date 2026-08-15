@@ -71,49 +71,14 @@ async def start_interview_for_user(user: dict, config: dict) -> dict:
         "startedAt": now,
         "expiresAt": expires_at,
         "endedAt": None,
-        "creditDeducted": True,
+        "creditDeducted": False,
         "deductedBucket": "10m" if config.get("duration", 10) <= 10 else ("15m" if config.get("duration", 10) <= 15 else "30m"),
-        "creditSource": "free_trial" if user.get("planKey") == "free_trial" else "main",
+        "creditSource": "pending",
     }
     await database.interviews.insert_one(document)
-    if user.get("planKey") == "free_trial":
-        raw_usage = user.get("usageCount")
-        if raw_usage is not None and int(raw_usage) > 0:
-            current_used = int(raw_usage)
-        elif bool(user.get("trialUsed", False)):
-            current_used = max(int(user.get("creditsUsed", 1)), 1)
-        else:
-            current_used = 0
-        new_usage_count = current_used + 1
-        ref_claimed = int(user.get("referralRewardsClaimed", 0))
-        tot_credits = 1 + ref_claimed
-        rem_credits = max(tot_credits - new_usage_count, 0)
-        has_ref = ref_claimed > 0 or rem_credits > 0
 
-        b10 = {"total": tot_credits, "used": new_usage_count, "remaining": rem_credits}
-        new_b = {
-            "10m": b10,
-            "15m": {"total": 0, "used": 0, "remaining": 0},
-            "30m": {"total": 0, "used": 0, "remaining": 0},
-        }
-
-        set_fields = {
-            "trialUsed": True,
-            "mainCreditBuckets": new_b,
-            "creditBuckets": new_b,
-            "totalCredits": tot_credits,
-            "creditsUsed": new_usage_count,
-            "creditsRemaining": rem_credits,
-            "usageCount": new_usage_count,
-        }
-        if rem_credits == 0 and not has_ref:
-            set_fields["billingStatus"] = "trial_used"
-        elif rem_credits > 0:
-            set_fields["billingStatus"] = "trial_available"
-
-        await database.users.update_one({"id": user["id"]}, {"$set": set_fields})
-    else:
-        await database.users.update_one({"id": user["id"]}, {"$set": {"usageCount": current_user.get("usageCount", 0) + 1}})
+    current_usage = int(user.get("usageCount", 0))
+    await database.users.update_one({"id": user["id"]}, {"$set": {"usageCount": current_usage + 1, "trialUsed": True}})
 
     return {"interview_id": interview_id, "status": "active", "config": config, "state": state, "message": first_question["message"]}
 
@@ -238,8 +203,9 @@ async def finish_interview(user: dict, interview_id: str) -> dict:
     credit_res = await consume_credit_for_interview(
         user_id=user["id"],
         interview_id=interview_id,
-        duration_minutes=interview.get("config", {}).get("duration", 15),
+        duration_minutes=interview.get("config", {}).get("duration", 10),
         elapsed_seconds=elapsed_seconds,
+        force_deduct=True,
     )
 
     if meaningful_count < 2:

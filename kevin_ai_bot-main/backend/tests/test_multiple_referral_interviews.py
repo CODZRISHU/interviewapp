@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from db import database
 from services.auth_service import process_referral_reward, _new_user_document
-from services.billing_service import ensure_interview_access, consume_credit_for_interview, reconcile_user_billing_state, build_entitlements
+from services.billing_service import ensure_interview_access, consume_credit_for_interview, reconcile_user_billing_state, build_entitlements, normalize_user_billing_document
 from services.interview_service import start_interview_for_user, finish_interview
 
 
@@ -68,15 +68,12 @@ async def test_multiple_referral_interviews():
     int1 = await start_interview_for_user(u1, config)
     print(f"\nStep 3: Started Interview 1 (ID: {int1['interview_id']}).")
 
-    u1_after_start1 = await database.users.find_one({"id": "user_multiref_666"})
-    print(f"   After starting Interview 1 -> Credits Remaining: {u1_after_start1['creditsRemaining']}")
-    assert u1_after_start1["creditsRemaining"] == 1
-
     # End Interview 1
-    await finish_interview(u1_after_start1, int1["interview_id"])
+    await finish_interview(u1, int1["interview_id"])
     u1_after_end1 = await database.users.find_one({"id": "user_multiref_666"})
-    print(f"   After completing Interview 1 -> Credits Remaining: {u1_after_end1['creditsRemaining']}")
-    assert u1_after_end1["creditsRemaining"] == 1
+    rec_end1 = normalize_user_billing_document(u1_after_end1)
+    print(f"   After completing Interview 1 -> Credits Remaining: {rec_end1['creditsRemaining']}")
+    assert rec_end1["creditsRemaining"] == 1
 
     # Verify Entitlements after Interview 1
     reconciled1 = await reconcile_user_billing_state(u1_after_end1)
@@ -89,15 +86,12 @@ async def test_multiple_referral_interviews():
     int2 = await start_interview_for_user(u1_after_end1, config)
     print(f"\nStep 4: Started Interview 2 (ID: {int2['interview_id']}).")
 
-    u2_after_start2 = await database.users.find_one({"id": "user_multiref_666"})
-    print(f"   After starting Interview 2 -> Credits Remaining: {u2_after_start2['creditsRemaining']}")
-    assert u2_after_start2["creditsRemaining"] == 0
-
     # End Interview 2
-    await finish_interview(u2_after_start2, int2["interview_id"])
+    await finish_interview(u1_after_end1, int2["interview_id"])
     u2_after_end2 = await database.users.find_one({"id": "user_multiref_666"})
-    print(f"   After completing Interview 2 -> Credits Remaining: {u2_after_end2['creditsRemaining']}")
-    assert u2_after_end2["creditsRemaining"] == 0
+    rec_end2 = normalize_user_billing_document(u2_after_end2)
+    print(f"   After completing Interview 2 -> Credits Remaining: {rec_end2['creditsRemaining']}")
+    assert rec_end2["creditsRemaining"] == 0
 
     # 5. Verify 3rd Interview Attempt is blocked
     reconciled2 = await reconcile_user_billing_state(u2_after_end2)
