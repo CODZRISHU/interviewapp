@@ -197,21 +197,47 @@ export default function InterviewConfig() {
             <h2 className="text-xl font-bold tracking-tight mb-1 text-white" style={{ fontFamily: 'Outfit' }}>Session Duration</h2>
             <p className="text-xs text-gray-400 mb-4">Choose interview time allocation</p>
             <div className="grid grid-cols-3 gap-4">
-              {DURATIONS.map(d => (
-                <button
-                  key={d.value}
-                  onClick={() => setConfig(c => ({ ...c, duration: d.value }))}
-                  className={`p-4 rounded-2xl border text-center transition-all ${
-                    config.duration === d.value
-                      ? 'border-[#E50914] bg-[#E50914]/10 shadow-[0_0_25px_rgba(229,9,20,0.25)]'
-                      : 'netflix-card hover:border-white/20'
-                  }`}
-                >
-                  <Clock className={`w-5 h-5 mx-auto mb-2 ${config.duration === d.value ? 'text-[#E50914]' : 'text-gray-400'}`} />
-                  <p className="text-sm font-bold text-white mb-0.5" style={{ fontFamily: 'Outfit' }}>{d.label}</p>
-                  <p className="text-[11px] text-gray-400">{d.questions}</p>
-                </button>
-              ))}
+              {DURATIONS.map(d => {
+                const isFreeOrReferralUser = user?.planKey === 'free_trial' || user?.plan === 'free';
+                const has15mCredit = (user?.creditBuckets?.['15m']?.remaining ?? 0) > 0 || (user?.mainCreditBuckets?.['15m']?.remaining ?? 0) > 0 || (user?.topupCreditBuckets?.['15m']?.remaining ?? 0) > 0;
+                const has30mCredit = (user?.creditBuckets?.['30m']?.remaining ?? 0) > 0 || (user?.mainCreditBuckets?.['30m']?.remaining ?? 0) > 0 || (user?.topupCreditBuckets?.['30m']?.remaining ?? 0) > 0;
+                
+                const disabled = d.value === 10 ? false : (isFreeOrReferralUser ? true : (d.value === 15 ? !has15mCredit : !has30mCredit));
+
+                return (
+                  <button
+                    key={d.value}
+                    onClick={() => {
+                      if (disabled) {
+                        setUpgradeErrorMsg(
+                          isFreeOrReferralUser
+                            ? "Free trial and referral reward credits are valid for 10-minute sessions only. Upgrade your plan to unlock 15-minute and 30-minute interviews."
+                            : `No active credits available for ${d.value}-minute interviews. Please upgrade your plan or select a 10-minute session.`
+                        );
+                        setShowUpgradeModal(true);
+                        return;
+                      }
+                      setConfig(c => ({ ...c, duration: d.value }));
+                    }}
+                    className={`relative p-4 rounded-2xl border text-center transition-all ${
+                      config.duration === d.value
+                        ? 'border-[#E50914] bg-[#E50914]/10 shadow-[0_0_25px_rgba(229,9,20,0.25)]'
+                        : disabled
+                        ? 'netflix-card border-white/5 opacity-60 hover:border-amber-500/40 cursor-pointer'
+                        : 'netflix-card hover:border-white/20'
+                    }`}
+                  >
+                    {disabled && (
+                      <span className="absolute top-2 right-2 bg-amber-500/20 text-amber-400 text-[9px] font-bold px-1.5 py-0.5 rounded border border-amber-500/30">
+                        {isFreeOrReferralUser ? '10m Only' : 'Upgrade'}
+                      </span>
+                    )}
+                    <Clock className={`w-5 h-5 mx-auto mb-2 ${config.duration === d.value ? 'text-[#E50914]' : (disabled ? 'text-amber-400/80' : 'text-gray-400')}`} />
+                    <p className="text-sm font-bold text-white mb-0.5" style={{ fontFamily: 'Outfit' }}>{d.label}</p>
+                    <p className="text-[11px] text-gray-400">{d.questions}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

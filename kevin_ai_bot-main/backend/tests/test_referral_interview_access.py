@@ -74,10 +74,23 @@ async def test_referral_credit_playback():
     assert ent["canStartInterview"] is True
     assert ent["remainingCredits"] == 1
 
-    # 4. Test ensure_interview_access for 10-minute session
+    # 4. Test ensure_interview_access for 10-minute session (SUCCESS)
     accessed_user, bucket_key = await ensure_interview_access(updated_user, 10)
-    print(f"Step 3: ensure_interview_access SUCCESSFUL! Selected duration bucket: {bucket_key}")
+    print(f"Step 3: ensure_interview_access SUCCESSFUL for 10m! Selected duration bucket: {bucket_key}")
     assert bucket_key == "10m"
+
+    # 5. Verify 15-minute and 30-minute sessions are BLOCKED for referral credit users
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as exc_15:
+        await ensure_interview_access(updated_user, 15)
+    assert exc_15.value.status_code == 403
+    assert "10-minute sessions only" in exc_15.value.detail
+
+    with pytest.raises(HTTPException) as exc_30:
+        await ensure_interview_access(updated_user, 30)
+    assert exc_30.value.status_code == 403
+    assert "10-minute sessions only" in exc_30.value.detail
+    print("Step 4: Verified 15-minute and 30-minute sessions are strictly BLOCKED for referral credit users!")
 
     # Clean up test data
     await database.users.delete_many({"email": {"$regex": "@testrefaccess.com$"}})
