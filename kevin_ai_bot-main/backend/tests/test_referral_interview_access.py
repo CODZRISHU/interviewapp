@@ -1,3 +1,4 @@
+import pytest
 import asyncio
 import sys
 from pathlib import Path
@@ -10,6 +11,7 @@ from services.auth_service import process_referral_reward, _new_user_document
 from services.billing_service import ensure_interview_access, reconcile_user_billing_state, build_entitlements
 
 
+@pytest.mark.asyncio
 async def test_referral_credit_playback():
     print("\n==========================================")
     print("TESTING REFERRAL CREDIT INTERVIEW ACCESS PLAYBACK")

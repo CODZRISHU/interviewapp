@@ -6,11 +6,13 @@ on:
       - dev
       - test
       - prod
+      - main
   push:
     branches:
       - dev
       - test
       - prod
+      - main
 
 concurrency:
   group: kevin-ai-ci-${{ github.workflow }}-${{ github.ref }}
@@ -21,7 +23,7 @@ permissions:
 
 jobs:
   backend:
-    name: Backend checks
+    name: Backend checks & Pytest
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -44,18 +46,10 @@ jobs:
       - name: Compile backend
         run: python -m compileall .
 
-      - name: Pytest hook
-        run: |
-          if python -c "import pytest" 2>/dev/null; then
-            python -m pytest ../tests || status=$?
-            if [ "${status:-0}" -eq 5 ]; then
-              echo "pytest is installed, but no backend tests were found yet."
-            else
-              exit "${status:-0}"
-            fi
-          else
-            echo "pytest is not installed yet; skipping backend pytest hook."
-          fi
+      - name: Run Pytest Test Suite
+        env:
+          PYTHONPATH: .
+        run: python -m pytest tests/ -v
 
   frontend:
     name: Frontend checks

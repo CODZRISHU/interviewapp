@@ -378,12 +378,29 @@ def normalize_user_billing_document(user: dict) -> dict:
         total_combined_used += used
         total_combined_remaining += rem
 
-    if result.get("planKey") == "free_trial" and result.get("trialUsed") and not has_referral_rewards and total_combined_remaining <= 0:
-        result["mainCreditBuckets"]["10m"] = {"total": 1, "used": 1, "remaining": 0}
-        result["creditBuckets"]["10m"] = {"total": 1, "used": 1, "remaining": 0}
-        result["totalCredits"] = 1
-        result["creditsUsed"] = 1
-        result["creditsRemaining"] = 0
+    ref_claimed = int(result.get("referralRewardsClaimed", 0)) or int(user.get("referralRewardsClaimed", 0))
+    if result.get("planKey") == "free_trial":
+        tot_cap = 1 + ref_claimed
+        raw_usage = user.get("usageCount")
+        if raw_usage is not None and int(raw_usage) > 0:
+            actual_used = int(raw_usage)
+        elif bool(user.get("trialUsed", False)):
+            actual_used = max(int(user.get("creditsUsed", 1)), 1)
+        else:
+            actual_used = 0
+
+        rem_cap = max(tot_cap - actual_used, 0)
+
+        b10 = {"total": tot_cap, "used": actual_used, "remaining": rem_cap}
+        result["mainCreditBuckets"]["10m"] = b10
+        result["creditBuckets"] = {
+            "10m": b10,
+            "15m": {"total": 0, "used": 0, "remaining": 0},
+            "30m": {"total": 0, "used": 0, "remaining": 0},
+        }
+        result["totalCredits"] = tot_cap
+        result["creditsUsed"] = actual_used
+        result["creditsRemaining"] = rem_cap
     else:
         result["creditBuckets"] = combined_buckets
         result["totalCredits"] = total_combined_capacity

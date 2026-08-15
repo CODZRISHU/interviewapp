@@ -1,3 +1,4 @@
+import pytest
 import asyncio
 import sys
 from pathlib import Path
@@ -11,6 +12,7 @@ from services.billing_service import ensure_interview_access, consume_credit_for
 from services.interview_service import start_interview_for_user, finish_interview
 
 
+@pytest.mark.asyncio
 async def test_multiple_referral_interviews():
     print("\n==========================================")
     print("TESTING MULTIPLE REFERRAL CREDIT INTERVIEW PLAYBACK (6 REFERRALS = 2 CREDITS)")
@@ -45,6 +47,7 @@ async def test_multiple_referral_interviews():
         user["referralCount"] = i - 1
         await database.users.update_one({"id": user["id"]}, {"$set": {"referralCount": i - 1}})
         
+        await database.users.delete_one({"id": f"user_ref_{i}{i}{i}"})
         ref_doc = _new_user_document(f"Ref {i}", f"ref{i}@testmultiref.com", "hash", "email")
         ref_doc["id"] = f"user_ref_{i}{i}{i}"
         await database.users.insert_one(ref_doc)
