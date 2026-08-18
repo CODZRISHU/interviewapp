@@ -43,6 +43,9 @@ class UserResponse(BaseModel):
     resumeFilename: str = ""
     resumeText: str = ""
     entitlements: Optional[Dict[str, Any]] = None
+    referralCode: str = ""
+    referralCount: int = 0
+    referralRewardsClaimed: int = 0
 
 
 class AuthResponse(BaseModel):
@@ -56,9 +59,9 @@ class RegisterRequest(BaseModel):
     name: str = Field(min_length=2, max_length=80)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
+    referral_code: Optional[str] = None
 
     @field_validator("name")
-
     @classmethod
     def clean_name(cls, value: str) -> str:
         return " ".join(value.strip().split())
@@ -72,6 +75,7 @@ class LoginRequest(BaseModel):
 
 class GoogleAuthRequest(BaseModel):
     id_token: str = Field(min_length=10)
+    referral_code: Optional[str] = None
 
 
 class RefreshRequest(BaseModel):

@@ -127,9 +127,72 @@ async def test_reconcile_expired_main_plan_clears_topups():
     assert reconciled["creditsRemaining"] == 0
 
 
+import pytest
+
+@pytest.mark.asyncio
+async def test_referral_credit_preservation_on_paid_plan_and_topup():
+    # Candidate earned 2 referral rewards on free_trial
+    user = {
+        "id": "u_ref_paid_test",
+        "planKey": "free_trial",
+        "billingStatus": "trial_available",
+        "referralRewardsClaimed": 2,
+        "usageCount": 1,
+        "trialUsed": True,
+    }
+
+    # 1. Verify normalization on free_trial gives 2 referral credits + 0 free trial remaining = 2 available
+    norm_free = normalize_user_billing_document(user)
+    assert norm_free["referralRewardsRemaining"] == 2
+    assert norm_free["creditsRemaining"] == 2
+    assert norm_free["creditBuckets"]["10m"]["remaining"] == 2
+
+    # 2. Simulate purchasing basic_99 main subscription (7 x 10m, 3 x 15m)
+    now = datetime.now(timezone.utc)
+    user_after_basic = {
+        **user,
+        "planKey": "basic_99",
+        "billingStatus": "active",
+        "currentPeriodStart": now.isoformat(),
+        "currentPeriodEnd": (now + timedelta(days=30)).isoformat(),
+        "mainCreditBuckets": {"10m": {"total": 7, "used": 0, "remaining": 7}, "15m": {"total": 3, "used": 0, "remaining": 3}},
+        "topupCreditBuckets": {"10m": {"total": 0, "used": 0, "remaining": 0}, "15m": {"total": 0, "used": 0, "remaining": 0}},
+    }
+    norm_paid = normalize_user_billing_document(user_after_basic)
+    assert norm_paid["referralRewardsRemaining"] == 2
+    # Total 10m credits = 7 main + 2 referral = 9! Total credits = 9 (10m) + 3 (15m) = 12!
+    assert norm_paid["creditBuckets"]["10m"]["remaining"] == 9
+    assert norm_paid["creditsRemaining"] == 12
+
+    # 3. Simulate candidate exhausting 7 main 10m credits (leaving 2 referral credits intact)
+    user_exhausted_main = {
+        **user_after_basic,
+        "mainCreditBuckets": {"10m": {"total": 7, "used": 7, "remaining": 0}, "15m": {"total": 3, "used": 3, "remaining": 0}},
+    }
+    norm_ex = normalize_user_billing_document(user_exhausted_main)
+    assert norm_ex["creditBuckets"]["10m"]["remaining"] == 2
+    assert norm_ex["creditsRemaining"] == 2
+
+    # Verify candidate CAN buy top-up when main plan credits are exhausted (Scenario B)
+    elig = check_topup_eligibility(user_exhausted_main)
+    assert elig["eligible"] is True
+    assert elig["scenario"] == "B"
+
+    # 4. Simulate purchasing topup_x_59 (3 x 10m credits)
+    user_after_topup = {
+        **user_exhausted_main,
+        "topupCreditBuckets": {"10m": {"total": 3, "used": 0, "remaining": 3}},
+    }
+    norm_topup = normalize_user_billing_document(user_after_topup)
+    # Total 10m credits = 0 main + 3 topup + 2 referral = 5!
+    assert norm_topup["creditBuckets"]["10m"]["remaining"] == 5
+    assert norm_topup["creditsRemaining"] == 5
+
+
 if __name__ == "__main__":
     test_topup_purchase_items()
     test_topup_eligibility_scenarios()
     asyncio.run(test_main_plan_single_active_restriction())
     asyncio.run(test_reconcile_expired_main_plan_clears_topups())
+    asyncio.run(test_referral_credit_preservation_on_paid_plan_and_topup())
     print("ALL TOP-UP & MAIN SUBSCRIPTION SYSTEM TESTS PASSED!")

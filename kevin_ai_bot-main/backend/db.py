@@ -3,9 +3,38 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from config import get_settings
 
 
+import asyncio
+
 settings = get_settings()
-client = AsyncIOMotorClient(settings.mongo_url)
-database: AsyncIOMotorDatabase = client[settings.db_name]
+_client: AsyncIOMotorClient = None
+_database: AsyncIOMotorDatabase = None
+
+
+def _get_client() -> AsyncIOMotorClient:
+    global _client, _database
+    try:
+        current_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        current_loop = None
+
+    if _client is None or (_client.io_loop != current_loop and current_loop is not None and not _client.io_loop.is_running()):
+        _client = AsyncIOMotorClient(settings.mongo_url)
+        _database = _client[settings.db_name]
+    return _client
+
+
+class DatabaseProxy:
+    def __getattr__(self, name):
+        _get_client()
+        return getattr(_database, name)
+
+    def __getitem__(self, name):
+        _get_client()
+        return _database[name]
+
+
+database = DatabaseProxy()
+client = _client
 
 
 async def ensure_indexes() -> None:

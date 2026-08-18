@@ -46,7 +46,7 @@ async def login(payload: LoginRequest):
 
 @router.post("/google", response_model=AuthResponse)
 async def google_login(payload: GoogleAuthRequest):
-    return await authenticate_google(payload.id_token)
+    return await authenticate_google(payload.id_token, payload.referral_code)
 
 
 @router.post("/refresh", response_model=TokenPair)
@@ -63,6 +63,30 @@ async def logout(payload: RefreshRequest):
 @router.get("/me", response_model=UserResponse)
 async def me(user=Depends(get_current_user)):
     return serialize_user(await reconcile_user_billing_state(user))
+
+
+@router.get("/referral-stats")
+async def referral_stats(user=Depends(get_current_user)):
+    from config import get_settings
+    settings = get_settings()
+
+    code = user.get("referralCode") or ""
+    count = int(user.get("referralCount", 0))
+    claimed = int(user.get("referralRewardsClaimed", 0))
+    next_reward_in = 3 - (count % 3)
+
+    public_url = getattr(settings, "public_app_url", "https://www.kevinhr.in") or "https://www.kevinhr.in"
+    referral_link = f"{public_url}/auth?ref={code}"
+
+    return {
+        "referralCode": code,
+        "referralLink": referral_link,
+        "referralCount": count,
+        "referralRewardsClaimed": claimed,
+        "nextRewardIn": next_reward_in,
+        "rewardInterval": 3,
+        "rewardDescription": "1 Free 10-Minute Mock Interview per 3 Friends Referred"
+    }
 
 
 @router.get("/config")

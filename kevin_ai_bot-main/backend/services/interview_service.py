@@ -72,31 +72,13 @@ async def start_interview_for_user(user: dict, config: dict) -> dict:
         "expiresAt": expires_at,
         "endedAt": None,
         "creditDeducted": False,
+        "deductedBucket": "10m" if config.get("duration", 10) <= 10 else ("15m" if config.get("duration", 10) <= 15 else "30m"),
+        "creditSource": "pending",
     }
     await database.interviews.insert_one(document)
-    if user.get("planKey") == "free_trial":
-        zero_b = {
-            "10m": {"total": 1, "used": 1, "remaining": 0},
-            "15m": {"total": 0, "used": 0, "remaining": 0},
-            "30m": {"total": 0, "used": 0, "remaining": 0},
-        }
-        await database.users.update_one(
-            {"id": user["id"]},
-            {
-                "$set": {
-                    "trialUsed": True,
-                    "billingStatus": "trial_used",
-                    "mainCreditBuckets": zero_b,
-                    "creditBuckets": zero_b,
-                    "totalCredits": 1,
-                    "creditsUsed": 1,
-                    "creditsRemaining": 0,
-                    "usageCount": current_user.get("usageCount", 0) + 1,
-                }
-            },
-        )
-    else:
-        await database.users.update_one({"id": user["id"]}, {"$set": {"usageCount": current_user.get("usageCount", 0) + 1}})
+
+    current_usage = int(user.get("usageCount", 0))
+    await database.users.update_one({"id": user["id"]}, {"$set": {"usageCount": current_usage + 1, "trialUsed": True}})
 
     return {"interview_id": interview_id, "status": "active", "config": config, "state": state, "message": first_question["message"]}
 
@@ -221,8 +203,9 @@ async def finish_interview(user: dict, interview_id: str) -> dict:
     credit_res = await consume_credit_for_interview(
         user_id=user["id"],
         interview_id=interview_id,
-        duration_minutes=interview.get("config", {}).get("duration", 15),
+        duration_minutes=interview.get("config", {}).get("duration", 10),
         elapsed_seconds=elapsed_seconds,
+        force_deduct=True,
     )
 
     if meaningful_count < 2:

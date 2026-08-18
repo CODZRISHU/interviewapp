@@ -6,11 +6,13 @@ on:
       - dev
       - test
       - prod
+      - main
   push:
     branches:
       - dev
       - test
       - prod
+      - main
 
 concurrency:
   group: kevin-ai-ci-${{ github.workflow }}-${{ github.ref }}
@@ -21,8 +23,13 @@ permissions:
 
 jobs:
   backend:
-    name: Backend checks
+    name: Backend checks & Pytest
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
     defaults:
       run:
         working-directory: kevin_ai_bot-main/backend
@@ -44,18 +51,13 @@ jobs:
       - name: Compile backend
         run: python -m compileall .
 
-      - name: Pytest hook
-        run: |
-          if python -c "import pytest" 2>/dev/null; then
-            python -m pytest ../tests || status=$?
-            if [ "${status:-0}" -eq 5 ]; then
-              echo "pytest is installed, but no backend tests were found yet."
-            else
-              exit "${status:-0}"
-            fi
-          else
-            echo "pytest is not installed yet; skipping backend pytest hook."
-          fi
+      - name: Run Pytest Test Suite
+        env:
+          PYTHONPATH: .
+          MONGO_URL: mongodb://localhost:27017/kevin_ai_ci_test
+          JWT_SECRET_KEY: ci-test-jwt-secret-key-for-pytest-execution-12345
+          JWT_REFRESH_SECRET_KEY: ci-test-jwt-refresh-secret-key-for-pytest-execution-12345
+        run: python -m pytest tests/ -v
 
   frontend:
     name: Frontend checks
