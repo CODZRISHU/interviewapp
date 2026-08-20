@@ -15,7 +15,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.buckets = defaultdict(deque)
 
     async def dispatch(self, request: Request, call_next):
-        if request.url.path.endswith("/health"):
+        if request.url.path.endswith("/health") or request.method == "OPTIONS":
             return await call_next(request)
 
         client_ip = request.client.host if request.client else "unknown"

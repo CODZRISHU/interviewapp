@@ -37,14 +37,25 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=lifespan)
-allowed_origins = list(set(settings.cors_origins + [
+raw_origins = settings.cors_origins if isinstance(settings.cors_origins, list) else [settings.cors_origins]
+default_domains = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://www.kevinhr.in",
+    "https://kevinhr.in",
+    "http://www.kevinhr.in",
+    "http://kevinhr.in",
+    "https://kevinhr.netlify.app",
+    "https://kevin-ai.netlify.app",
     "https://interviewapp-three.vercel.app",
     "https://interviewapp.vercel.app",
-]))
+]
+
+allowed_origins = list(set(raw_origins + default_domains))
 
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(RequestLoggingMiddleware)
@@ -52,6 +63,7 @@ app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.kevinhr\.in|https://.*\.netlify\.app|https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
